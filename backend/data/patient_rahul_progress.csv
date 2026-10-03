@@ -1,0 +1,15 @@
+date,post_op_day,pain_level,flexion_degrees,extension_degrees,exercise_completed,daily_steps,notes
+2026-09-20,1,7,45,-12,1,250,Initial mobilization post-surgery. High swelling.
+2026-09-21,2,6,50,-10,1,380,Continuous passive motion initiated.
+2026-09-22,3,6,55,-9,1,450,Cold pack tolerance good. Cryotherapy started.
+2026-09-23,4,5,60,-8,1,620,Ankle pumps reducing dependent edema.
+2026-09-24,5,5,64,-8,1,710,Quadriceps activation lagging slightly.
+2026-09-25,6,4,68,-7,1,850,Isometric quad sets improving.
+2026-09-26,7,4,72,-6,1,940,Transitioned to cane support.
+2026-09-27,8,4,75,-5,1,1020,Stair descent pacing initiated.
+2026-09-28,9,3,78,-5,1,1100,Terminal knee extension with towel roll.
+2026-09-29,10,3,80,-4,1,1180,Morning stiffness clears within 15 min.
+2026-09-30,11,3,82,-4,1,1250,Gait symmetry steady.
+2026-10-01,12,3,85,-3,1,1340,Active assisted heel slides reached 85 deg.
+2026-10-02,13,2,87,-3,1,1390,Minimal lateral crepitus reported.
+2026-10-03,14,2,88,-3,1,1420,Stage 2 functional loading target achieved.

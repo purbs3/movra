@@ -1,0 +1,313 @@
+import React, { useState } from 'react';
+import { 
+  ShieldAlert, 
+  LogOut, 
+  Globe, 
+  Briefcase, 
+  Send, 
+  RefreshCw, 
+  Check, 
+  Copy, 
+  Users, 
+  Server, 
+  Database,
+  Activity,
+  Layers,
+  Sparkles
+} from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { api } from '../../services/api';
+
+interface AdminDashboardProps {
+  onLogout: () => void;
+}
+
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
+  const { user, logout } = useAuth();
+  const [activeTab, setActiveTab] = useState<'scraper' | 'consultant' | 'overview'>('scraper');
+
+  // Scraper State
+  const [scrapeUrl, setScrapeUrl] = useState('https://www.aaos.org/quality/research');
+  const [scrapePrompt, setScrapePrompt] = useState('Extract post-operative knee extension protocol and cryotherapy precautions.');
+  const [isScraping, setIsScraping] = useState(false);
+  const [scrapeResult, setScrapeResult] = useState<any>(null);
+
+  // Consultant State
+  const [consultQuery, setConsultQuery] = useState('What are the optimal CPT reimbursement strategies for home physiotherapy under Medicare RTM?');
+  const [isConsulting, setIsConsulting] = useState(false);
+  const [consultResult, setConsultResult] = useState<string | null>(null);
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleLogoutClick = () => {
+    logout();
+    onLogout();
+  };
+
+  const handleScrape = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!scrapeUrl.trim() || !scrapePrompt.trim() || isScraping) return;
+    setIsScraping(true);
+    try {
+      const res = await api.scrapeWebsite(scrapeUrl.trim(), scrapePrompt.trim());
+      setScrapeResult(res);
+    } catch (err) {
+      console.warn('Scrape error:', err);
+    } finally {
+      setIsScraping(false);
+    }
+  };
+
+  const handleConsult = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!consultQuery.trim() || isConsulting) return;
+    setIsConsulting(true);
+    try {
+      const res = await api.getConsultantAdvice(consultQuery.trim());
+      setConsultResult(res.advice);
+    } catch (err) {
+      console.warn('Consult error:', err);
+    } finally {
+      setIsConsulting(false);
+    }
+  };
+
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  return (
+    <div className="pb-24 pt-4 px-4 max-w-md mx-auto space-y-5 animate-in fade-in duration-300">
+      {/* Top Welcome Card */}
+      <div className="bg-gradient-to-br from-purple-950 via-purple-900 to-slate-900 text-white rounded-3xl p-5 shadow-lg shadow-purple-950/20 border border-purple-700/40 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-400/40 flex items-center justify-center text-purple-200">
+              <ShieldAlert className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wider block">
+                System Administration
+              </span>
+              <h1 className="text-lg font-extrabold text-white tracking-tight">
+                Welcome, {user?.full_name || 'Admin'}
+              </h1>
+            </div>
+          </div>
+
+          <button
+            onClick={handleLogoutClick}
+            className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors border border-white/10"
+            title="Log out of Admin session"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Logout</span>
+          </button>
+        </div>
+
+        <p className="text-xs text-purple-100/90 leading-relaxed">
+          Full system authority: execute automated clinical web scraping (ScraperAgent) and consult market strategy (ConsultantAgent).
+        </p>
+
+        {/* System Telemetry Chips */}
+        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-purple-700/40 text-center">
+          <div className="bg-purple-950/50 p-2 rounded-xl border border-purple-600/30">
+            <span className="text-[10px] text-purple-300 block font-medium">Access Tier</span>
+            <span className="text-xs font-extrabold text-emerald-400 uppercase">SUPERADMIN</span>
+          </div>
+          <div className="bg-purple-950/50 p-2 rounded-xl border border-purple-600/30">
+            <span className="text-[10px] text-purple-300 block font-medium">Database</span>
+            <span className="text-xs font-extrabold text-white">SQLite Active</span>
+          </div>
+          <div className="bg-purple-950/50 p-2 rounded-xl border border-purple-600/30">
+            <span className="text-[10px] text-purple-300 block font-medium">RBAC Status</span>
+            <span className="text-xs font-extrabold text-purple-200">Enforced</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex p-1 bg-slate-200/70 rounded-2xl">
+        <button
+          type="button"
+          onClick={() => setActiveTab('scraper')}
+          className={`flex-1 py-2 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all ${
+            activeTab === 'scraper'
+              ? 'bg-white text-purple-950 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Globe className="w-3.5 h-3.5 text-purple-600" />
+          <span>Research Scraper</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('consultant')}
+          className={`flex-1 py-2 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all ${
+            activeTab === 'consultant'
+              ? 'bg-white text-purple-950 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Briefcase className="w-3.5 h-3.5 text-purple-600" />
+          <span>Consultant</span>
+        </button>
+      </div>
+
+      {/* TAB 1: ScraperAgent */}
+      {activeTab === 'scraper' && (
+        <div className="space-y-4 animate-in fade-in">
+          <form onSubmit={handleScrape} className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.04)] space-y-3.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                ScrapeGraphAI Target
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-sky-50 text-sky-800 border border-sky-200">
+                POST /api/admin/scrape
+              </span>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-600">Target Website URL</label>
+              <input
+                type="url"
+                value={scrapeUrl}
+                onChange={(e) => setScrapeUrl(e.target.value)}
+                required
+                className="w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-600">Extraction Prompt</label>
+              <textarea
+                value={scrapePrompt}
+                onChange={(e) => setScrapePrompt(e.target.value)}
+                rows={3}
+                required
+                className="w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isScraping}
+              className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-xs transition-transform active:scale-95"
+            >
+              {isScraping ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Scraping with ScrapeGraphAI...</span>
+                </>
+              ) : (
+                <>
+                  <Globe className="w-4 h-4" />
+                  <span>Execute Web Scraper</span>
+                </>
+              )}
+            </button>
+          </form>
+
+          {scrapeResult && (
+            <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.04)] space-y-3 animate-in fade-in">
+              <div className="flex items-center justify-between">
+                <h3 className="font-extrabold text-sm text-slate-800">Scraped Findings</h3>
+                <span className="text-[10px] font-mono text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                  {scrapeResult.engine}
+                </span>
+              </div>
+
+              {scrapeResult.data?.key_findings && (
+                <div className="space-y-1.5">
+                  {scrapeResult.data.key_findings.map((f: string, idx: number) => (
+                    <div key={idx} className="p-2.5 bg-purple-50/60 border border-purple-100 rounded-xl text-xs text-purple-950 flex items-start gap-2">
+                      <Check className="w-3.5 h-3.5 text-purple-600 shrink-0 mt-0.5" />
+                      <span>{f}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {scrapeResult.data?.summary && (
+                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-xs text-slate-700 leading-relaxed">
+                  <span className="font-bold text-slate-800 block mb-1">Executive Summary:</span>
+                  {scrapeResult.data.summary}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 2: ConsultantAgent */}
+      {activeTab === 'consultant' && (
+        <div className="space-y-4 animate-in fade-in">
+          <form onSubmit={handleConsult} className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.04)] space-y-3.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Google ADK Market Strategy
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-purple-50 text-purple-800 border border-purple-200">
+                POST /api/admin/consult
+              </span>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[11px] font-bold text-slate-600">Strategic Question</label>
+              <textarea
+                value={consultQuery}
+                onChange={(e) => setConsultQuery(e.target.value)}
+                rows={3}
+                required
+                className="w-full py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isConsulting}
+              className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-xs transition-transform active:scale-95"
+            >
+              {isConsulting ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Synthesizing Strategy...</span>
+                </>
+              ) : (
+                <>
+                  <Briefcase className="w-4 h-4" />
+                  <span>Consult with Google ADK</span>
+                </>
+              )}
+            </button>
+          </form>
+
+          {consultResult && (
+            <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.04)] space-y-3 animate-in fade-in">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <span className="text-xs font-bold text-purple-950 uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                  Executive Strategic Advisory
+                </span>
+                <button
+                  onClick={() => handleCopy(consultResult)}
+                  className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1 p-1"
+                >
+                  {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{isCopied ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
+
+              <div className="prose prose-sm max-w-none text-slate-700 text-xs leading-relaxed space-y-2 whitespace-pre-line">
+                {consultResult}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default AdminDashboard;
