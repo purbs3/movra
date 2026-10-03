@@ -1,7 +1,7 @@
 import { TodayPlanData, RetainedContextItem, ChatMessage, ProgressAnalyticsData } from '../types';
 
-// API base pointing to local FastAPI backend
-export const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000/api';
+// ⭐ DIRECT PRODUCTION BACKEND URL (Fixes connection issue on Vercel)
+export const API_BASE_URL = 'https://movra-backend.onrender.com/api';
 
 // Fallback initial data when Python backend is offline or loading
 export const FALLBACK_TODAY_PLAN: TodayPlanData = {
@@ -180,7 +180,7 @@ class ApiClient {
       const res = await fetch(`${API_BASE_URL}/health`, {
         method: 'GET',
         headers: { 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(1500)
+        signal: AbortSignal.timeout(3000)
       });
       this.isOnline = res.ok;
       this.hasChecked = true;
@@ -202,13 +202,13 @@ class ApiClient {
     try {
       const res = await fetch(`${API_BASE_URL}/today-plan/${patientId}`, {
         headers: { 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(2500)
+        signal: AbortSignal.timeout(4000)
       });
       if (!res.ok) {
         // Try fallback to query param
         const fallbackRes = await fetch(`${API_BASE_URL}/today-plan?patient_id=${patientId}`, {
           headers: { 'Accept': 'application/json' },
-          signal: AbortSignal.timeout(2500)
+          signal: AbortSignal.timeout(4000)
         });
         if (!fallbackRes.ok) throw new Error(`HTTP error ${res.status}`);
         const data = await fallbackRes.json();
@@ -238,7 +238,7 @@ class ApiClient {
           'Accept': 'application/json'
         },
         body: JSON.stringify({ query, message: query, patient_id: patientId }),
-        signal: AbortSignal.timeout(4000)
+        signal: AbortSignal.timeout(8000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const data = await res.json();
@@ -297,7 +297,7 @@ class ApiClient {
           'Accept': 'application/json'
         },
         body: JSON.stringify({ query, message: query, patient_id: patientId }),
-        signal: AbortSignal.timeout(4000)
+        signal: AbortSignal.timeout(8000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const data = await res.json();
@@ -328,7 +328,7 @@ class ApiClient {
     try {
       const res = await fetch(`${API_BASE_URL}/learn/${encodeURIComponent(topic)}`, {
         headers: { 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(4000)
+        signal: AbortSignal.timeout(8000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const data = await res.json();
@@ -353,7 +353,7 @@ class ApiClient {
           'Accept': 'application/json'
         },
         body: JSON.stringify({ url, prompt }),
-        signal: AbortSignal.timeout(10000)
+        signal: AbortSignal.timeout(15000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const data = await res.json();
@@ -393,7 +393,7 @@ class ApiClient {
           'Accept': 'application/json'
         },
         body: JSON.stringify({ query }),
-        signal: AbortSignal.timeout(10000)
+        signal: AbortSignal.timeout(15000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const data = await res.json();
@@ -425,7 +425,7 @@ class ApiClient {
       const res = await fetch(`${API_BASE_URL}/voice`, {
         method: 'POST',
         body: formData,
-        signal: AbortSignal.timeout(8000)
+        signal: AbortSignal.timeout(15000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const data = await res.json();
@@ -446,12 +446,12 @@ class ApiClient {
     try {
       const res = await fetch(`${API_BASE_URL}/progress/${patientId}`, {
         headers: { 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(3000)
+        signal: AbortSignal.timeout(5000)
       });
       if (!res.ok) {
         const fallbackRes = await fetch(`${API_BASE_URL}/progress?patient_id=${patientId}`, {
           headers: { 'Accept': 'application/json' },
-          signal: AbortSignal.timeout(3000)
+          signal: AbortSignal.timeout(5000)
         });
         if (!fallbackRes.ok) throw new Error(`HTTP error ${res.status}`);
         return await fallbackRes.json();
@@ -505,12 +505,12 @@ class ApiClient {
     try {
       const res = await fetch(`${API_BASE_URL}/patient-memory/${patientId}`, {
         headers: { 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(2500)
+        signal: AbortSignal.timeout(4000)
       });
       if (!res.ok) {
         const fallbackRes = await fetch(`${API_BASE_URL}/patient-memory?patient_id=${encodeURIComponent(patientId)}`, {
           headers: { 'Accept': 'application/json' },
-          signal: AbortSignal.timeout(2500)
+          signal: AbortSignal.timeout(4000)
         });
         if (!fallbackRes.ok) throw new Error(`HTTP error ${res.status}`);
         return await fallbackRes.json();
@@ -534,7 +534,7 @@ class ApiClient {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled, patient_id: patientId }),
-        signal: AbortSignal.timeout(2500)
+        signal: AbortSignal.timeout(4000)
       });
       if (res.ok) {
         this.isOnline = true;
@@ -554,7 +554,7 @@ class ApiClient {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ category, summary, patient_id: patientId }),
-        signal: AbortSignal.timeout(2500)
+        signal: AbortSignal.timeout(4000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const data = await res.json();
