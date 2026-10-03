@@ -30,14 +30,17 @@ try:
 except Exception as e:
     print(f"[*] Seed note: {e}")
 
-# Configure CORS to allow communication with the React frontend
-# Frontend typically runs on http://localhost:3000 or http://localhost:5173
+# ==========================================
+# CORS CONFIGURATION (FINAL FIX)
+# allow_credentials=True ke saath "*" allow nahi hota, 
+# isliye frontend ka exact URL add karna zaroori hai.
+# ==========================================
 origins = [
     "http://localhost:3000",
     "http://localhost:5173",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
-    "*"  # In development, accept connections from preview clients
+    "https://movra-dvcs.vercel.app"  # <--- Aapka Vercel Live URL
 ]
 
 app.add_middleware(
@@ -48,7 +51,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register API routes under /api
+# Register API routes
 app.include_router(auth_router)
 app.include_router(api_router)
 
@@ -73,11 +76,12 @@ def root():
             "POST /api/patient-memory/toggle",
             "POST /api/generate-plan"
         ],
-        "message": "Movra Physiotherapy API running with 9 specialized agents (Cloud RAG, Local RAG, Physio, Memory, Voice, Analyst, Teaching, Scraper, Consultant)."
+        "message": "Movra Physiotherapy API running with 9 specialized agents."
     }
 
 
 if __name__ == "__main__":
+    # Render ke liye PORT environment variable zaroori hai
     port = int(os.environ.get("PORT", 8000))
-    print(f"[*] Starting Movra Backend on http://localhost:{port}")
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
+    print(f"[*] Starting Movra Backend on port {port}")
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)
