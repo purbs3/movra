@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { X, Terminal, Check, Copy, ExternalLink, Activity, ArrowRight, ShieldCheck, Cpu } from 'lucide-react';
-import { API_BASE_URL } from '../services/api';
+
+// ⭐ YAHAN APNA ASLI RENDER URL DAALEIN (Aakhir mein /api zaroori hai)
+const BACKEND_URL = "https://movra-backend.onrender.com/api";
 
 interface LocalBackendDrawerProps {
   isOpen: boolean;
@@ -31,15 +33,16 @@ export const LocalBackendDrawer: React.FC<LocalBackendDrawerProps> = ({
     setIsTesting(true);
     setTestResult(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/health`, {
-        signal: AbortSignal.timeout(2000),
+      // Yahan BACKEND_URL use ho raha hai
+      const res = await fetch(`${BACKEND_URL}/health`, {
+        signal: AbortSignal.timeout(3000),
       });
       const data = await res.json();
       setTestResult(JSON.stringify(data, null, 2));
       onRefresh();
     } catch (err: any) {
       setTestResult(
-        `Could not connect to ${API_BASE_URL}/health.\nMake sure FastAPI is running with:\n  uvicorn main:app --reload --port 8000\n(Error: ${err.message || 'Connection Refused'})`
+        `Could not connect to ${BACKEND_URL}/health.\nMake sure your Render backend is awake and running.\n(Error: ${err.message || 'Connection Refused'})`
       );
     } finally {
       setIsTesting(false);
@@ -82,10 +85,10 @@ export const LocalBackendDrawer: React.FC<LocalBackendDrawerProps> = ({
               <span className={`w-3 h-3 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
               <div>
                 <div className="font-semibold text-xs">
-                  {isOnline ? 'Local FastAPI Connected' : 'Local Server Waiting (Preview Active)'}
+                  {isOnline ? 'FastAPI Connected' : 'Backend Standby (Render Free Tier)'}
                 </div>
                 <div className="text-[11px] opacity-80 font-mono">
-                  {API_BASE_URL}
+                  {BACKEND_URL}
                 </div>
               </div>
             </div>
@@ -107,7 +110,7 @@ export const LocalBackendDrawer: React.FC<LocalBackendDrawerProps> = ({
           {/* Quick Terminal Command */}
           <div>
             <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-              1. Configure .env & Run Backend
+              1. Configure .env & Run Backend Locally
             </div>
             <div className="bg-slate-900 text-slate-100 p-3.5 rounded-xl font-mono text-xs relative group">
               <pre className="overflow-x-auto">
@@ -173,7 +176,7 @@ uvicorn main:app --reload --port 8000`}
                   </span>
                 </div>
                 <p className="text-xs text-slate-600 mt-1">
-                  Patient memory layer (<code className="bg-white px-1 py-0.5 rounded text-purple-800 border">MemoryAgent</code>) connected to Qdrant (<code className="font-mono text-purple-900">localhost:6333</code>). Retains tolerances, pain limits, and past queries.
+                  Patient memory layer (<code className="bg-white px-1 py-0.5 rounded text-purple-800 border">MemoryAgent</code>) connected to Qdrant. Retains tolerances, pain limits, and past queries.
                 </p>
               </div>
 
@@ -195,16 +198,15 @@ uvicorn main:app --reload --port 8000`}
 
           {/* Automatic Bridge Info */}
           <div className="p-3 bg-teal-50 border border-teal-200/80 rounded-xl text-xs text-teal-900 leading-relaxed">
-            <strong>Seamless Integration:</strong> The frontend makes real fetch calls to{' '}
-            <code className="bg-white px-1 py-0.5 rounded border border-teal-300 font-mono">http://localhost:8000/api/...</code>.
-            When you run FastAPI on your machine, your custom agents will instantly power this exact UI without modifying a single line of React code!
+            <strong>Seamless Integration:</strong> The frontend makes real fetch calls to your deployed Render backend.
+            Your custom agents will instantly power this exact UI!
           </div>
         </div>
 
         {/* Footer */}
         <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
           <a
-            href="http://localhost:8000/docs"
+            href={`${BACKEND_URL}/docs`}
             target="_blank"
             rel="noreferrer"
             className="text-xs text-teal-700 hover:text-teal-900 font-semibold flex items-center gap-1"
