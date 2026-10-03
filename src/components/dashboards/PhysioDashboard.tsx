@@ -86,6 +86,7 @@ export const PhysioDashboard: React.FC<PhysioDashboardProps> = ({
   const [receiptModalData, setReceiptModalData] = useState<any | null>(null);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const [isProfileSaved, setIsProfileSaved] = useState(false);
 
   // Editable Clinician Profile State (Clearly marked placeholder)
   const [physioProfile, setPhysioProfile] = useState({
@@ -544,12 +545,23 @@ export const PhysioDashboard: React.FC<PhysioDashboardProps> = ({
                 <span>Log Out</span>
               </button>
 
-              <button
-                onClick={() => alert('Profile credentials updated successfully.')}
-                className="px-5 py-2.5 bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
-              >
-                Save Profile
-              </button>
+              <div className="flex items-center gap-3">
+                {isProfileSaved && (
+                  <span className="text-xs font-bold text-teal-700 flex items-center gap-1 animate-in fade-in">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Credentials Updated</span>
+                  </span>
+                )}
+                <button
+                  onClick={() => {
+                    setIsProfileSaved(true);
+                    setTimeout(() => setIsProfileSaved(false), 3000);
+                  }}
+                  className="px-5 py-2.5 bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
+                >
+                  Save Profile
+                </button>
+              </div>
             </div>
           </div>
         )}

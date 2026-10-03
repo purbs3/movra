@@ -256,4 +256,66 @@ export interface ClinicalTransaction {
   status: 'PAID' | 'PENDING' | 'FAILED' | 'REFUNDED';
 }
 
+export interface FeatureFlagItem {
+  id?: number;
+  key: string;
+  name: string;
+  enabled: boolean;
+  description?: string;
+  category: string;
+  updated_by?: string;
+  updated_at?: string;
+}
+
+export interface AuditLogItem {
+  id: number | string;
+  actor_email: string;
+  action: string;
+  target_type: string;
+  target_id: string;
+  reason?: string;
+  timestamp: string;
+}
+
+export interface PlatformServiceItem {
+  id: number | string;
+  name: string;
+  description: string;
+  category: string;
+  price: number;
+  duration_minutes: number;
+  availability_status: string;
+  is_active: boolean;
+}
+
+export interface PlatformServiceAreaItem {
+  id: number | string;
+  name: string;
+  is_active: boolean;
+  lead_time_min: number;
+}
+
+export interface AdminUserData {
+  id: number | string;
+  email: string;
+  full_name: string;
+  role: 'patient' | 'physiotherapist' | 'admin';
+  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'PENDING_VERIFICATION';
+  phone?: string;
+  condition?: string;
+  area?: string;
+  qualification?: string;
+  license?: string;
+  service_areas?: string[];
+  experience?: string;
+  rating?: number;
+  assigned_patients?: number;
+  completed_visits?: number;
+  earnings?: number;
+  total_visits?: number;
+  lifetime_spend?: number;
+  last_login?: string;
+  created_at?: string;
+}
+
 

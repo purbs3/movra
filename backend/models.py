@@ -261,6 +261,97 @@ class PaymentRecord(Base):
         }
 
 
+class FeatureFlag(Base):
+    __tablename__ = "feature_flags"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    key = Column(String(100), unique=True, index=True, nullable=False)
+    name = Column(String(150), nullable=False)
+    enabled = Column(Boolean, default=True, nullable=False)
+    description = Column(Text, nullable=True)
+    category = Column(String(50), default="PLATFORM", nullable=False)
+    updated_by = Column(String(150), default="admin@movra.ai", nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "key": self.key,
+            "name": self.name,
+            "enabled": self.enabled,
+            "description": self.description,
+            "category": self.category,
+            "updated_by": self.updated_by,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None
+        }
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    actor_email = Column(String(150), default="admin@movra.ai", nullable=False)
+    action = Column(String(150), nullable=False)
+    target_type = Column(String(100), nullable=False)
+    target_id = Column(String(100), nullable=False)
+    reason = Column(Text, nullable=True)
+    metadata_json = Column(Text, nullable=True)
+    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "actor_email": self.actor_email,
+            "action": self.action,
+            "target_type": self.target_type,
+            "target_id": self.target_id,
+            "reason": self.reason,
+            "timestamp": self.timestamp.isoformat() if self.timestamp else None
+        }
+
+
+class PlatformService(Base):
+    __tablename__ = "platform_services"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    name = Column(String(150), nullable=False)
+    description = Column(Text, nullable=False)
+    category = Column(String(100), default="Rehabilitation", nullable=False)
+    price = Column(Float, default=750.0, nullable=False)
+    duration_minutes = Column(Integer, default=45, nullable=False)
+    availability_status = Column(String(50), default="AVAILABLE", nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "category": self.category,
+            "price": self.price,
+            "duration_minutes": self.duration_minutes,
+            "availability_status": self.availability_status,
+            "is_active": self.is_active
+        }
+
+
+class PlatformServiceArea(Base):
+    __tablename__ = "platform_service_areas"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    name = Column(String(150), unique=True, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    lead_time_min = Column(Integer, default=25, nullable=False)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "is_active": self.is_active,
+            "lead_time_min": self.lead_time_min
+        }
+
+
 # Ensure tables are created
 Base.metadata.create_all(bind=engine)
 
@@ -270,7 +361,7 @@ def migrate_user_table():
         inspector = inspect(engine)
         tables = inspector.get_table_names()
         
-        for table_cls in [Booking, Appointment, SOAPNote, PatientGoal, PaymentRecord]:
+        for table_cls in [Booking, Appointment, SOAPNote, PatientGoal, PaymentRecord, FeatureFlag, AuditLog, PlatformService, PlatformServiceArea]:
             if table_cls.__tablename__ not in tables:
                 table_cls.__table__.create(bind=engine)
                 print(f"[*] Migration: Created '{table_cls.__tablename__}' table.")
@@ -283,6 +374,9 @@ def migrate_user_table():
             if "subscription_expires_at" not in columns:
                 conn.execute(text("ALTER TABLE users ADD COLUMN subscription_expires_at DATETIME;"))
                 print("[*] Migration: Added 'subscription_expires_at' column to users table.")
+            if "account_status" not in columns:
+                conn.execute(text("ALTER TABLE users ADD COLUMN account_status VARCHAR(50) DEFAULT 'ACTIVE' NOT NULL;"))
+                print("[*] Migration: Added 'account_status' column to users table.")
             conn.commit()
     except Exception as e:
         print(f"[*] Schema migration notice: {e}")

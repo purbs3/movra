@@ -16,6 +16,7 @@ from routes.auth_routes import router as auth_router
 from routes.subscription_routes import router as subscription_router
 from routes.booking_routes import router as booking_router
 from routes.physio_routes import router as physio_router
+from routes.admin_routes import router as admin_router
 from seed_admin import seed_users
 from database import engine, Base
 import models
@@ -58,6 +59,7 @@ app.include_router(auth_router)
 app.include_router(subscription_router)
 app.include_router(booking_router)
 app.include_router(physio_router)
+app.include_router(admin_router)
 app.include_router(api_router)
 
 

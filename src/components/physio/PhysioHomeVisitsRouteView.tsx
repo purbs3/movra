@@ -49,11 +49,6 @@ export const PhysioHomeVisitsRouteView: React.FC<PhysioHomeVisitsRouteViewProps>
     }, 900);
   };
 
-  const handleOpenMaps = (address: string, area: string) => {
-    const fullQuery = encodeURIComponent(`${address}, ${area}, Patna`);
-    window.open(`https://www.google.com/maps/search/?api=1&query=${fullQuery}`, '_blank');
-  };
-
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
       {/* Route Header Card */}
@@ -195,15 +190,17 @@ export const PhysioHomeVisitsRouteView: React.FC<PhysioHomeVisitsRouteViewProps>
                       <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
                     </a>
 
-                    <button
-                      onClick={() => handleOpenMaps(visit.address, visit.area)}
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${visit.address}, ${visit.area}, Patna`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="px-2.5 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 font-bold text-xs rounded-xl flex items-center gap-1 transition-colors"
                       title="Open Google Maps Route"
                     >
                       <Navigation className="w-3.5 h-3.5 text-sky-600" />
                       <span>Directions</span>
                       <ExternalLink className="w-3 h-3 text-sky-400" />
-                    </button>
+                    </a>
                   </div>
 
                   <div className="flex items-center gap-2">
