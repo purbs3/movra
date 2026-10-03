@@ -55,6 +55,15 @@ import {
   AdminDashboard 
 } from './components/dashboards/AdminDashboard';
 import { 
+  PublicHomePage 
+} from './components/public/PublicHomePage';
+import { 
+  BookingAuthModal 
+} from './components/public/BookingAuthModal';
+import { 
+  BookingConfirmModal 
+} from './components/public/BookingConfirmModal';
+import { 
   useAuth 
 } from './context/AuthContext';
 import { 
@@ -67,28 +76,38 @@ import {
   ChatMessage, 
   RetainedContextItem, 
   Exercise, 
-  UserRole 
+  UserRole,
+  BookingRequest 
 } from './types';
-import { Activity, ShieldCheck, Sparkles, LogOut, User as UserIcon, ShieldAlert, Stethoscope, Users } from 'lucide-react';
+import { Activity, ShieldCheck, Sparkles, LogOut, User as UserIcon, ShieldAlert, Stethoscope, Users, Home } from 'lucide-react';
 
 export default function App() {
   const { user, role, isAuthenticated, isLoading: isAuthLoading, logout } = useAuth();
   
-  // Auth navigation state when unauthenticated
+  // Page view mode:
+  // When patient opens for the first time, show 'public' homepage! (NOT Login or Signup)
+  const [pageView, setPageView] = useState<'public' | 'dashboard' | 'auth'>('public');
+
+  // Auth navigation state when directly signing in/up
   const [authView, setAuthView] = useState<'login' | 'signup' | 'forgot-password'>('login');
   
   // Tab navigation state typed to TabType
-  const [currentTab, setCurrentTab] = useState<TabType>(() => {
-    const saved = localStorage.getItem('movra_auth_user');
-    if (saved) {
-      try {
-        const u = JSON.parse(saved);
-        if (u.role === 'admin') return 'admin';
-        if (u.role === 'physiotherapist') return 'physio-dashboard';
-      } catch {}
-    }
-    return 'dashboard';
+  const [currentTab, setCurrentTab] = useState<TabType>('dashboard');
+
+  // Booking Flow State
+  const [activeBookingData, setActiveBookingData] = useState<Partial<BookingRequest>>({
+    name: '',
+    phone: '',
+    age: '45',
+    location: '',
+    condition: 'Knee Pain / Post-Op Recovery',
+    service: 'Home Visit Physiotherapy',
+    preferred_date: new Date().toISOString().split('T')[0],
+    preferred_time: '10:00 AM',
+    message: ''
   });
+  const [isBookingAuthModalOpen, setIsBookingAuthModalOpen] = useState(false);
+  const [isBookingConfirmModalOpen, setIsBookingConfirmModalOpen] = useState(false);
   
   const [planData, setPlanData] = useState<TodayPlanData>(FALLBACK_TODAY_PLAN);
   const [retainedContext, setRetainedContext] = useState<RetainedContextItem[]>(FALLBACK_RETAINED_CONTEXT);
@@ -103,10 +122,10 @@ export default function App() {
   useEffect(() => {
     if (role === 'admin') {
       setCurrentTab('admin');
+      setPageView('dashboard');
     } else if (role === 'physiotherapist') {
       setCurrentTab('physio-dashboard');
-    } else if (role === 'patient') {
-      setCurrentTab('dashboard');
+      setPageView('dashboard');
     }
   }, [role]);
 
@@ -149,6 +168,7 @@ export default function App() {
 
   // Handle post-login redirection based on role
   const handleAuthSuccess = (assignedRole: UserRole) => {
+    setPageView('dashboard');
     if (assignedRole === 'admin') {
       window.history.replaceState(null, '', '/admin-dashboard');
       setCurrentTab('admin');
@@ -159,6 +179,28 @@ export default function App() {
       window.history.replaceState(null, '', '/dashboard');
       setCurrentTab('dashboard');
     }
+  };
+
+  // ========================================================
+  // BOOKING JOURNEY HANDLERS
+  // ========================================================
+  const handleStartBooking = (formData: Partial<BookingRequest>) => {
+    setActiveBookingData(formData);
+
+    // If patient is NOT logged in: show the authentication modal first
+    // while preserving all entered booking data!
+    if (!isAuthenticated) {
+      setIsBookingAuthModalOpen(true);
+    } else {
+      // If already logged in: open the booking confirmation modal directly
+      setIsBookingConfirmModalOpen(true);
+    }
+  };
+
+  const handleBookingAuthSuccess = () => {
+    setIsBookingAuthModalOpen(false);
+    // Proceed directly to booking confirmation with preserved data
+    setIsBookingConfirmModalOpen(true);
   };
 
   // Handle Chat message submission -> calls POST /api/chat or POST /api/local-chat
@@ -260,31 +302,89 @@ export default function App() {
   };
 
   // -----------------------------------------------------------------------
-  // UNAUTHENTICATED STATE: Render Login, Signup, or Forgot Password
+  // 1. PUBLIC HOMEPAGE (First screen shown to patients)
   // -----------------------------------------------------------------------
-  if (!isAuthenticated) {
+  if (pageView === 'public') {
+    return (
+      <>
+        <PublicHomePage
+          onStartBooking={handleStartBooking}
+          onNavigateToAuth={() => {
+            setPageView('auth');
+            setAuthView('login');
+          }}
+          isAuthenticated={isAuthenticated}
+          onNavigateToDashboard={() => setPageView('dashboard')}
+        />
+
+        {/* Step 2: Authentication Modal (Preserves booking data!) */}
+        {isBookingAuthModalOpen && (
+          <BookingAuthModal
+            isOpen={isBookingAuthModalOpen}
+            onClose={() => setIsBookingAuthModalOpen(false)}
+            bookingData={activeBookingData}
+            onAuthSuccess={handleBookingAuthSuccess}
+          />
+        )}
+
+        {/* Step 3: Review & Confirm Modal */}
+        {isBookingConfirmModalOpen && (
+          <BookingConfirmModal
+            isOpen={isBookingConfirmModalOpen}
+            onClose={() => setIsBookingConfirmModalOpen(false)}
+            bookingData={activeBookingData}
+            onBookingConfirmed={(b) => {
+              // Successfully booked!
+            }}
+            onNavigateToDashboard={() => {
+              setIsBookingConfirmModalOpen(false);
+              setPageView('dashboard');
+              setCurrentTab('dashboard');
+            }}
+            onBackToHome={() => {
+              setIsBookingConfirmModalOpen(false);
+              setPageView('public');
+            }}
+          />
+        )}
+      </>
+    );
+  }
+
+  // -----------------------------------------------------------------------
+  // 2. DIRECT AUTHENTICATION SCREENS (Sign in / Sign up)
+  // -----------------------------------------------------------------------
+  if (pageView === 'auth' && !isAuthenticated) {
     return (
       <div className="min-h-screen bg-slate-100/70 text-slate-800 flex flex-col font-sans antialiased selection:bg-teal-500 selection:text-white">
         <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 py-2.5 shadow-2xs">
           <div className="max-w-md mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPageView('public')}
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+            >
               <div className="w-8 h-8 rounded-xl bg-teal-600 flex items-center justify-center text-white shadow-sm shadow-teal-600/30">
                 <Activity className="w-5 h-5 stroke-[2.5]" />
               </div>
-              <span className="font-extrabold text-base tracking-tight text-slate-900 flex items-center gap-1">
-                Movra <span className="text-teal-600 text-xs font-semibold">AI Physio</span>
-              </span>
-            </div>
-            <BackendStatusBadge
-              isOnline={isBackendOnline}
-              onOpenDevInfo={() => setIsDevDrawerOpen(true)}
-              onRefresh={verifyBackend}
-              isChecking={isCheckingBackend}
-            />
+              <div className="text-left">
+                <span className="font-extrabold text-sm tracking-tight text-slate-900 block">
+                  MOVRA
+                </span>
+                <span className="text-[10px] text-teal-700 font-semibold block">
+                  Home Visit Physiotherapy
+                </span>
+              </div>
+            </button>
+            <button
+              onClick={() => setPageView('public')}
+              className="text-xs font-bold text-slate-500 hover:text-slate-800"
+            >
+              Back to Home
+            </button>
           </div>
         </header>
 
-        <main className="flex-1 flex items-center justify-center py-6">
+        <main className="flex-1 flex items-center justify-center py-6 px-4">
           {authView === 'login' && (
             <Login
               onNavigate={(v) => setAuthView(v)}
@@ -305,42 +405,45 @@ export default function App() {
             />
           )}
         </main>
-
-        {isDevDrawerOpen && (
-          <LocalBackendDrawer
-            isOpen={isDevDrawerOpen}
-            onClose={() => setIsDevDrawerOpen(false)}
-            isOnline={isBackendOnline}
-            onRefresh={verifyBackend}
-          />
-        )}
       </div>
     );
   }
 
   // -----------------------------------------------------------------------
-  // AUTHENTICATED STATE: Role-Based & Admin All-Access Content Routing
+  // 3. AUTHENTICATED PATIENT & CLINICIAN DASHBOARD
   // -----------------------------------------------------------------------
   return (
     <div className="min-h-screen bg-slate-100/70 text-slate-800 flex flex-col font-sans antialiased selection:bg-teal-500 selection:text-white">
-      {/* Top Navigation Bar with Role & Welcome */}
+      {/* Top Navigation Bar with Role, Patient Name & Switch to Public Home */}
       <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 py-2.5 shadow-2xs">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-teal-600 flex items-center justify-center text-white shadow-sm shadow-teal-600/30">
+            <button
+              onClick={() => setPageView('public')}
+              title="Return to Public Home"
+              className="w-8 h-8 rounded-xl bg-teal-600 flex items-center justify-center text-white shadow-sm shadow-teal-600/30 hover:opacity-90 transition-opacity"
+            >
               <Activity className="w-5 h-5 stroke-[2.5]" />
-            </div>
+            </button>
             <div>
               <span className="font-extrabold text-sm tracking-tight text-slate-900 flex items-center gap-1">
-                Movra <span className="text-teal-600 text-xs font-semibold">AI Physio</span>
+                MOVRA <span className="text-teal-600 text-xs font-semibold">AI Physio</span>
               </span>
               <p className="text-[10px] text-slate-500 font-medium truncate max-w-[140px]">
-                {user?.full_name} ({user?.role})
+                {user?.full_name || 'Patient'} ({user?.role || 'patient'})
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setPageView('public')}
+              className="py-1 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold rounded-lg transition-colors flex items-center gap-1"
+            >
+              <Home className="w-3 h-3 text-teal-600" />
+              <span>Public Home</span>
+            </button>
+
             <BackendStatusBadge
               isOnline={isBackendOnline}
               onOpenDevInfo={() => setIsDevDrawerOpen(true)}
@@ -349,7 +452,10 @@ export default function App() {
             />
 
             <button
-              onClick={logout}
+              onClick={() => {
+                logout();
+                setPageView('public');
+              }}
               className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
               title="Logout"
             >
@@ -401,24 +507,34 @@ export default function App() {
         )}
       </header>
 
-      {/* Main Role Content Router: Supports Patient, Physio, and Admin All-Access */}
-      <main className="flex-1 w-full max-w-md mx-auto bg-slate-50 border-x border-slate-200/60 shadow-xs">
+      {/* Main Role Content Router */}
+      <main className={`flex-1 w-full mx-auto bg-slate-50 shadow-xs ${
+        role === 'physiotherapist' || (role === 'admin' && (currentTab === 'physio-dashboard' || currentTab === 'physio-alerts' || currentTab === 'admin'))
+          ? 'max-w-6xl'
+          : 'max-w-md border-x border-slate-200/60'
+      }`}>
         {/* 1. Admin Dashboard View */}
         {currentTab === 'admin' && (
           <ProtectedRoute
             allowedRoles={['admin']}
-            onRedirectToLogin={() => setAuthView('login')}
+            onRedirectToLogin={() => {
+              setPageView('auth');
+              setAuthView('login');
+            }}
             onRedirectToDashboard={(r) => handleAuthSuccess(r)}
           >
             <AdminDashboard onLogout={logout} activeTab="admin_overview" />
           </ProtectedRoute>
         )}
 
-        {/* 2. Physio Caseload & Alerts Views (Accessible by Physio AND Admin) */}
+        {/* 2. Physio Caseload & Alerts Views */}
         {(currentTab === 'physio-dashboard' || currentTab === 'physio-alerts') && (
           <ProtectedRoute
             allowedRoles={['physiotherapist', 'admin']}
-            onRedirectToLogin={() => setAuthView('login')}
+            onRedirectToLogin={() => {
+              setPageView('auth');
+              setAuthView('login');
+            }}
             onRedirectToDashboard={(r) => handleAuthSuccess(r)}
           >
             <PhysioDashboard 
@@ -428,11 +544,14 @@ export default function App() {
           </ProtectedRoute>
         )}
 
-        {/* 3. Patient Home (Accessible by Patient AND Admin) */}
+        {/* 3. Patient Home Dashboard */}
         {currentTab === 'dashboard' && (
           <ProtectedRoute
             allowedRoles={['patient', 'admin']}
-            onRedirectToLogin={() => setAuthView('login')}
+            onRedirectToLogin={() => {
+              setPageView('auth');
+              setAuthView('login');
+            }}
             onRedirectToDashboard={(r) => handleAuthSuccess(r)}
           >
             <DashboardView
@@ -441,15 +560,25 @@ export default function App() {
               onOpenVoiceModal={() => setIsVoiceModalOpen(true)}
               onNavigateToChat={() => setCurrentTab('chat')}
               onToggleExerciseComplete={handleToggleExercise}
+              onOpenBookVisit={() => {
+                setPageView('public');
+                setTimeout(() => {
+                  const el = document.getElementById('booking-section');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }, 100);
+              }}
             />
           </ProtectedRoute>
         )}
 
-        {/* 4. AI Physio Chat (Accessible by Patient AND Admin) */}
+        {/* 4. AI Physio Chat */}
         {currentTab === 'chat' && (
           <ProtectedRoute
             allowedRoles={['patient', 'admin']}
-            onRedirectToLogin={() => setAuthView('login')}
+            onRedirectToLogin={() => {
+              setPageView('auth');
+              setAuthView('login');
+            }}
             onRedirectToDashboard={(r) => handleAuthSuccess(r)}
           >
             <ChatView
@@ -462,22 +591,28 @@ export default function App() {
           </ProtectedRoute>
         )}
 
-        {/* 5. Progress Telemetry (Accessible by Patient, Physio, AND Admin) */}
+        {/* 5. Progress Telemetry */}
         {currentTab === 'progress' && (
           <ProtectedRoute
             allowedRoles={['patient', 'physiotherapist', 'admin']}
-            onRedirectToLogin={() => setAuthView('login')}
+            onRedirectToLogin={() => {
+              setPageView('auth');
+              setAuthView('login');
+            }}
             onRedirectToDashboard={(r) => handleAuthSuccess(r)}
           >
             <ProgressView planData={planData} />
           </ProtectedRoute>
         )}
 
-        {/* 6. Patient Education / Learn (Accessible by Patient AND Admin) */}
+        {/* 6. Patient Education / Learn */}
         {currentTab === 'learn' && (
           <ProtectedRoute
             allowedRoles={['patient', 'admin']}
-            onRedirectToLogin={() => setAuthView('login')}
+            onRedirectToLogin={() => {
+              setPageView('auth');
+              setAuthView('login');
+            }}
             onRedirectToDashboard={(r) => handleAuthSuccess(r)}
           >
             <LearnView />
@@ -488,7 +623,10 @@ export default function App() {
         {currentTab === 'subscription' && (
           <ProtectedRoute
             allowedRoles={['patient', 'admin']}
-            onRedirectToLogin={() => setAuthView('login')}
+            onRedirectToLogin={() => {
+              setPageView('auth');
+              setAuthView('login');
+            }}
             onRedirectToDashboard={(r) => handleAuthSuccess(r)}
           >
             <SubscriptionView onBack={() => setCurrentTab('profile')} />
@@ -499,7 +637,10 @@ export default function App() {
         {currentTab === 'profile' && (
           <ProtectedRoute
             allowedRoles={['patient', 'physiotherapist', 'admin']}
-            onRedirectToLogin={() => setAuthView('login')}
+            onRedirectToLogin={() => {
+              setPageView('auth');
+              setAuthView('login');
+            }}
             onRedirectToDashboard={(r) => handleAuthSuccess(r)}
           >
             {role === 'physiotherapist' ? (
@@ -520,13 +661,15 @@ export default function App() {
         )}
       </main>
 
-      {/* Dynamic Role-Based Bottom Navigation Bar (Admin sees all tabs) */}
-      <BottomNav
-        currentTab={currentTab}
-        onTabChange={(tab) => setCurrentTab(tab)}
-        role={role || 'patient'}
-        memoryEnabled={memoryEnabled}
-      />
+      {/* Dynamic Role-Based Bottom Navigation Bar */}
+      <div className={role === 'physiotherapist' ? 'md:hidden' : ''}>
+        <BottomNav
+          currentTab={currentTab}
+          onTabChange={(tab) => setCurrentTab(tab)}
+          role={role || 'patient'}
+          memoryEnabled={memoryEnabled}
+        />
+      </div>
 
       {/* Real-time Voice Consultation Modal */}
       {isVoiceModalOpen && (
@@ -544,6 +687,26 @@ export default function App() {
           onClose={() => setIsDevDrawerOpen(false)}
           isOnline={isBackendOnline}
           onRefresh={verifyBackend}
+        />
+      )}
+
+      {/* Booking Confirm Modal if triggered from Dashboard */}
+      {isBookingConfirmModalOpen && (
+        <BookingConfirmModal
+          isOpen={isBookingConfirmModalOpen}
+          onClose={() => setIsBookingConfirmModalOpen(false)}
+          bookingData={activeBookingData}
+          onBookingConfirmed={(b) => {
+            // Updated
+          }}
+          onNavigateToDashboard={() => {
+            setIsBookingConfirmModalOpen(false);
+            setCurrentTab('dashboard');
+          }}
+          onBackToHome={() => {
+            setIsBookingConfirmModalOpen(false);
+            setPageView('public');
+          }}
         />
       )}
     </div>

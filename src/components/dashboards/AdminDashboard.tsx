@@ -29,17 +29,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   activeTab: externalTab = 'admin_overview' 
 }) => {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'scraper' | 'consultant' | 'overview'>('overview');
+  const [activeTab, setActiveTab] = useState<'scraper' | 'consultant' | 'overview' | 'bookings'>('overview');
+  const [adminBookings, setAdminBookings] = useState<any[]>([]);
 
   useEffect(() => {
     if (externalTab === 'scraper') {
       setActiveTab('scraper');
     } else if (externalTab === 'consultant') {
       setActiveTab('consultant');
+    } else if (externalTab === 'bookings') {
+      setActiveTab('bookings');
     } else {
       setActiveTab('overview');
     }
   }, [externalTab]);
+
+  useEffect(() => {
+    api.getAllBookings().then((list) => {
+      if (list) setAdminBookings(list);
+    });
+  }, []);
+
+  const handleUpdateStatus = async (id: number | string, newStatus: string) => {
+    await api.updateBookingStatus(id, newStatus);
+    setAdminBookings(prev => prev.map(b => (b.id === id || b.reference_id === id) ? { ...b, status: newStatus } : b));
+  };
 
   // Scraper State
   const [scrapeUrl, setScrapeUrl] = useState('https://www.aaos.org/quality/research');
@@ -143,11 +157,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </div>
 
       {/* Tabs */}
-      <div className="flex p-1 bg-slate-200/70 rounded-2xl">
+      <div className="flex p-1 bg-slate-200/70 rounded-2xl gap-1">
         <button
           type="button"
           onClick={() => setActiveTab('overview')}
-          className={`flex-1 py-2 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all ${
+          className={`flex-1 py-2 text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition-all ${
             activeTab === 'overview'
               ? 'bg-white text-purple-950 shadow-xs'
               : 'text-slate-600 hover:text-slate-900'
@@ -158,8 +172,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </button>
         <button
           type="button"
+          onClick={() => setActiveTab('bookings')}
+          className={`flex-1 py-2 text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition-all ${
+            activeTab === 'bookings'
+              ? 'bg-white text-purple-950 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Activity className="w-3.5 h-3.5 text-purple-600" />
+          <span>Visits ({adminBookings.length})</span>
+        </button>
+        <button
+          type="button"
           onClick={() => setActiveTab('scraper')}
-          className={`flex-1 py-2 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all ${
+          className={`flex-1 py-2 text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition-all ${
             activeTab === 'scraper'
               ? 'bg-white text-purple-950 shadow-xs'
               : 'text-slate-600 hover:text-slate-900'
@@ -171,7 +197,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('consultant')}
-          className={`flex-1 py-2 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all ${
+          className={`flex-1 py-2 text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition-all ${
             activeTab === 'consultant'
               ? 'bg-white text-purple-950 shadow-xs'
               : 'text-slate-600 hover:text-slate-900'
@@ -181,6 +207,84 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <span>Consultant</span>
         </button>
       </div>
+
+      {/* BOOKINGS MANAGEMENT TAB */}
+      {activeTab === 'bookings' && (
+        <div className="space-y-3 animate-in fade-in">
+          <div className="flex items-center justify-between">
+            <h3 className="font-extrabold text-sm text-slate-800">Home Visit Booking Requests</h3>
+            <span className="text-xs text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full font-bold border border-purple-200">
+              {adminBookings.length} Requests
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {adminBookings.map((b) => (
+              <div
+                key={b.id || b.reference_id}
+                className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs space-y-2.5"
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h4 className="font-extrabold text-xs text-slate-900 flex items-center gap-1.5">
+                      {b.name} ({b.age}y)
+                    </h4>
+                    <p className="text-[11px] text-purple-800 font-semibold">{b.service || 'Home Visit'}</p>
+                    <p className="text-[10px] text-slate-400 font-mono">Ref: {b.reference_id}</p>
+                  </div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                    b.status === 'CONFIRMED'
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                      : b.status === 'PENDING'
+                      ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                      : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {b.status}
+                  </span>
+                </div>
+
+                <div className="p-2.5 bg-slate-50 rounded-xl space-y-1 text-xs text-slate-700">
+                  <div className="flex items-center gap-1 text-[11px]">
+                    <span className="font-bold">{b.preferred_date}</span>
+                    <span>•</span>
+                    <span>{b.preferred_time}</span>
+                  </div>
+                  <div className="text-[11px] truncate">📍 {b.location}</div>
+                  <div className="text-[11px]"><strong>Concern:</strong> {b.condition}</div>
+                </div>
+
+                <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
+                  <a
+                    href={`tel:${b.phone}`}
+                    className="text-purple-700 hover:text-purple-900 font-bold text-[11px]"
+                  >
+                    📞 {b.phone}
+                  </a>
+
+                  <div className="flex items-center gap-1.5">
+                    {b.status !== 'CONFIRMED' && (
+                      <button
+                        onClick={() => handleUpdateStatus(b.id || b.reference_id, 'CONFIRMED')}
+                        className="py-1 px-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-lg shadow-2xs"
+                      >
+                        Confirm
+                      </button>
+                    )}
+                    {b.status !== 'CANCELLED' && (
+                      <button
+                        onClick={() => handleUpdateStatus(b.id || b.reference_id, 'CANCELLED')}
+                        className="py-1 px-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-[11px] rounded-lg"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* OVERVIEW TAB */}
       {activeTab === 'overview' && (

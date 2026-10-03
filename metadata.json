@@ -1,6 +1,6 @@
 {
-  "name": "Movra - AI-Powered Home Physiotherapy",
-  "description": "Full-stack AI-powered home physiotherapy platform with RAG, clinical memory, and voice guidance.",
+  "name": "MOVRA - Movement & Rehabilitation Care",
+  "description": "Personalized physiotherapy and rehabilitation from qualified professionals, delivered to your home.",
   "requestFramePermissions": ["microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

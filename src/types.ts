@@ -166,3 +166,94 @@ export interface TodayPlanData {
     model_version: string;
   };
 }
+
+export interface BookingRequest {
+  id?: number | string;
+  reference_id?: string;
+  user_id?: number | string;
+  name: string;
+  phone: string;
+  age: number | string;
+  location: string;
+  condition: string;
+  service?: string;
+  preferred_date: string;
+  preferred_time: string;
+  message?: string;
+  status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'RESCHEDULED' | 'REJECTED';
+  physiotherapist?: string;
+  created_at?: string;
+}
+
+export type AppointmentStatusType = 
+  | 'PENDING' 
+  | 'CONFIRMED' 
+  | 'RESCHEDULED' 
+  | 'IN_PROGRESS' 
+  | 'COMPLETED' 
+  | 'CANCELLED' 
+  | 'NO_SHOW';
+
+export interface ClinicalAppointment {
+  id: number | string;
+  reference_id: string;
+  booking_id?: number;
+  patient_id: string;
+  patient_name: string;
+  phone: string;
+  age: number;
+  location: string;
+  area: string;
+  condition: string;
+  service: string;
+  date: string;
+  time: string;
+  status: AppointmentStatusType;
+  physiotherapist: string;
+  fee: number;
+  payment_status: 'PAID' | 'PENDING' | 'REFUNDED';
+  notes?: string;
+  created_at?: string;
+  distance_km?: number;
+  travel_time_min?: number;
+}
+
+export interface ClinicalSOAPNote {
+  id?: number | string;
+  patient_id: string;
+  visit_id?: number | string;
+  therapist_name: string;
+  date: string;
+  subjective: string;
+  objective: string;
+  assessment: string;
+  plan: string;
+  ai_assisted?: boolean;
+  ai_draft_used?: boolean;
+  status: 'DRAFT' | 'FINALIZED';
+  created_at?: string;
+}
+
+export interface ClinicalPatientGoal {
+  id?: number | string;
+  patient_id: string;
+  goal_name: string;
+  baseline: number;
+  current_value: number;
+  target_value: number;
+  unit: string;
+  target_date: string;
+  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'ACHIEVED' | 'REVIEW_NEEDED';
+}
+
+export interface ClinicalTransaction {
+  id: number | string;
+  date: string;
+  patient: string;
+  service: string;
+  amount: number;
+  method: 'UPI' | 'Cash' | 'Online';
+  status: 'PAID' | 'PENDING' | 'FAILED' | 'REFUNDED';
+}
+
+

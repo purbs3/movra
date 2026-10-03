@@ -1,98 +1,136 @@
-# Movra - AI Physiotherapy Platform (RBAC & Subscriptions)
+# MOVRA - Movement & Rehabilitation Care
 
 A modern, clinical Full-Stack home physiotherapy web application built with **React (Vite) + Tailwind CSS** on the frontend and **FastAPI + SQLAlchemy** on the backend.
 
-Includes **Role-Based Authentication**, **Dynamic Role-Based Bottom Navigation**, **Subscription Tiers & Upgrades**, and **9 Specialized Clinical & Business AI Agents**.
+---
+
+## 1. Public Patient Homepage Experience (`src/components/public/PublicHomePage.tsx`)
+
+When an unauthenticated patient opens MOVRA for the first time, they are welcomed by an app-like public homepage rather than a login wall:
+
+1. **Header**:
+   - Left: MOVRA logo + "MOVRA" & "Movement & Rehabilitation Care"
+   - Right: "Book Visit" CTA
+2. **Hero Section**:
+   - **Headline**: *"Physiotherapy Care, Delivered to Your Home."*
+   - **Subheadline**: *"Personalized physiotherapy and rehabilitation from qualified professionals, at your home."*
+   - **Primary Action**: "Book a Home Visit" (smoothly scrolls to the booking form)
+   - **Quick Actions**: "Call Now" (`tel:+919820144829`) & "Chat on WhatsApp"
+   - **Trust Indicators**:
+     - ✓ Qualified Physiotherapy Care
+     - ✓ Home Visit Available
+     - ✓ Personalized Treatment
+     - ✓ Progress Tracking
+3. **Care You Can Trust (Trust Section)**:
+   - 6 healthcare cards: Qualified Physiotherapists, Personalized Treatment Plans, Home-Based Rehabilitation, Progress Monitoring, Patient Education, Follow-up Support.
+   - Core clinical statement: *"Your treatment is guided by a physiotherapist and supported by technology. AI-assisted physiotherapy support."*
+4. **Meet Your Physiotherapist**:
+   - Professional profile for **Dr. Ananya Iyer, PT** (BPT, MPT • 8+ Years Experience in Ortho & Neuro Rehabilitation, Metro Home Visit Zone).
+   - "View Profile" modal & "Book Home Visit" actions.
+5. **Physiotherapy Services**:
+   - Cards covering **Orthopedic**, **Neurological**, **Pediatric**, **Geriatric**, **Sports**, and **Post-Operative** rehabilitation.
+6. **How MOVRA Works**:
+   - Simple 4-step onboarding flow: 01 Book a Home Visit ➔ 02 Assessment ➔ 03 Personalized Plan ➔ 04 Track Progress.
+7. **Why Choose MOVRA?**:
+   - Home-Based Care, Personalized Care, Progress Tracking, AI-Assisted Support, and Easy Communication.
+8. **Book a Physiotherapy Home Visit (Interactive Form)**:
+   - Name, Mobile Number, Age, Preferred Date, Preferred Time, Location / Area, Condition / Main Concern, Additional Note.
+   - **No login required** to fill the form.
+9. **Sticky Mobile Bottom CTA**:
+   - Mobile-fixed bar with "Book Home Visit", "Call", and "WhatsApp" quick actions.
+   - NO traditional website footer.
 
 ---
 
-## 1. Role-Based Bottom Navigation (`src/components/BottomNav.tsx`)
+## 2. Frictionless Booking & Authentication Flow
 
-Navigation dynamically renders depending on the authenticated user's role (detected from props or `localStorage`):
-
-| Role | Rendered Tabs & Icons | Restricted / Hidden Tabs |
-|---|---|---|
-| **`patient`** | **Home** (`Home`), **AI Physio** (`MessageSquare`), **Progress** (`TrendingUp`), **Learn** (`BookOpen`), **Profile** (`User`) | Admin, Caseload, Alerts |
-| **`physiotherapist`** | **Caseload** (`Users`), **Alerts** (`AlertTriangle`), **Progress** (`Activity`), **Profile** (`User`) | AI Physio Chat, Learn |
-| **`admin`** | **Dashboard** (`LayoutDashboard`), **Scraper** (`Globe`), **Consultant** (`Briefcase`), **Settings** (`Settings`) | Patient Exercises, Caseload |
-
-- **Design**: Mobile-responsive, soft teal/white medical aesthetic with active indicator pills and status badges (e.g. memory pulse on AI Physio).
-- **Navigation Safety**: `ProtectedRoute` prevents role switching via URL manipulation (e.g. Patients attempting to access `/admin` or `/physio-dashboard` are redirected to `/dashboard`).
-
----
-
-## 2. Subscription Plans & Billing Engine
-
-### Database Model (`backend/models.py`)
-- **`SubscriptionTier` Enum**: `free`, `pro`, `clinic` (default: `free`).
-- **`subscription_expires_at`**: `DateTime` (nullable, stores timestamp for 30-day billing cycles).
-- **SQLite Auto-Migration (`migrate_user_table`)**:
-  - Automatically executes `ALTER TABLE users ADD COLUMN subscription_tier ...` and `ALTER TABLE users ADD COLUMN subscription_expires_at ...` if running on an existing database file without dropping existing records.
-
-### API Endpoints (`backend/routes/subscription_routes.py`)
-- **`GET /api/subscription/plans`**: Returns available membership tiers, pricing, features, and limits:
-  1. **Free Recovery** ($0 / forever): Basic exercises, 14-day mobility tracking, standard text support.
-  2. **Pro Recovery AI** ($19 / month - *Featured Tier*): Real-time AI Voice physio (Whisper + TTS), Private On-Device Local Deepseek-R1 inference, DuckDB & Pandas 14-day CSV telemetry charts, unlimited Contextual RAG with AAOS citations, Physio Professor curriculum.
-  3. **Clinic Concierge** ($79 / month): Everything in Pro + 1-on-1 human Physical Therapist bi-weekly check-ins, CMS Remote Therapeutic Monitoring (CPT 98975 / 98977) billing reports, and direct clinician EHR sync.
-- **`GET /api/subscription/status/{user_id}`**: Returns current tier, days remaining, expiration date, and active feature flags.
-- **`POST /api/subscription/upgrade`**:
-  - Accepts `{ user_id, plan_id, payment_method }`.
-  - Mocks payment gateway transaction processing (generates a unique `tx_movra_*` ID).
-  - Upgrades user to requested tier and adds **30 days** to `subscription_expires_at`.
+```
+Patient opens MOVRA
+       ↓
+Public MOVRA Homepage (NO login page shown)
+       ↓
+"Book a Home Visit"
+       ↓
+Booking Form (Fills Name, Mobile, Date, Time, Location, Condition)
+       ↓
+"Continue Booking"
+       ↓
+If not authenticated:
+Modal: "Create your MOVRA account"
+(Preserves entered booking details, allows Sign Up or Sign In)
+       ↓
+Return to Booking Review: "Confirm Home Visit"
+       ↓
+"Confirm Booking" (Calls POST /api/bookings)
+       ↓
+"Booking Request Sent"
+(Shows Patient Name, Service, Date, Time, Location, Reference ID e.g. MOV-BK-7492)
+       ↓
+Patient Dashboard
+(Displays "Upcoming Appointment" card at top + "My Bookings" list)
+```
 
 ---
 
-## 3. Subscription UI (`src/components/SubscriptionView.tsx`)
+## 3. Patient Dashboard Enhancements (`src/components/DashboardView.tsx`)
 
-- **Current Plan Status Card**: Shows whether the patient is currently on the **Free Recovery** tier or active **Pro / Clinic** plan, along with days remaining until renewal.
-- **Interactive Pricing Cards**:
-  - Distinct teal/emerald highlighted styling for **Pro Recovery AI** with an elevated "Most Popular" crown badge.
-  - One-click **"Upgrade to Pro ($19/mo)"** button with payment processing spinner.
-- **Payment Confirmation Animation**:
-  - Displays instant payment success alert with simulated transaction ID and auto-updates user's active tier in the UI.
-- **Accessible from Patient Profile**: Tap **"Recovery Subscription Plans"** on the Profile screen to manage plans or upgrade anytime.
+- **"Upcoming Appointment" Card**:
+  - Featured at the top of the patient dashboard.
+  - Displays Home Visit Session, Date, Time, and Status badge (`Pending Confirmation` / `Confirmed`).
+  - Actions: "View Booking Details" & "Contact MOVRA".
+- **"My Bookings" Modal**:
+  - Organized tabs: **Upcoming**, **Completed**, and **Cancelled**.
+  - Displays Reference ID, service, therapist, date/time, and location.
+  - "Book New Visit" button.
 
 ---
 
-## Pre-Seeded Test Credentials
+## 4. Clinician & Admin Booking Management (`PhysioDashboard.tsx` & `AdminDashboard.tsx`)
 
-| Role | Email | Password | Assigned Dashboard |
+- Added **"Booking Requests" / "Visits"** tab in both Physiotherapist and Admin portals.
+- Clinicians can review incoming home visit requests, inspect location and condition notes.
+- Actions:
+  - **Confirm Visit**: updates status to `CONFIRMED` in real-time.
+  - **Cancel Visit**: marks as `CANCELLED`.
+  - **Call Patient** (`tel:...`) & **WhatsApp Patient** (prefilled friendly greeting).
+
+---
+
+## 5. API Endpoints
+
+### Bookings (`backend/routes/booking_routes.py`)
+- `POST /api/bookings`: Create a new home visit request.
+- `GET /api/bookings/my`: Retrieve patient bookings.
+- `GET /api/bookings`: List all bookings for Clinicians & Admin.
+- `PATCH /api/bookings/{id}/status`: Update status (`CONFIRMED`, `CANCELLED`, `COMPLETED`).
+
+---
+
+## 6. Pre-Seeded Test Credentials
+
+| Role | Email | Password | Assigned Portal |
 |---|---|---|---|
-| **Patient** | `patient@movra.ai` | `Patient@12345` | `/dashboard` (Home, AI Physio, Progress, Learn, Profile, Subscriptions) |
-| **Physiotherapist** | `physio@movra.ai` | `Physio@12345` | `/physio-dashboard` (Caseload, Alerts, Progress, Profile) |
-| **Admin** | `admin@movra.ai` | `Admin@12345` | `/admin-dashboard` (Dashboard, Scraper, Consultant, Settings) |
+| **Patient** | `patient@movra.ai` | `Patient@12345` | Public Home / Patient Dashboard (Upcoming Visit, AI Physio, Progress, Learn, Profile) |
+| **Physiotherapist** | `physio@movra.ai` | `Physio@12345` | Clinician Portal (Caseload, Alerts, Booking Requests, Progress) |
+| **Admin** | `admin@movra.ai` | `Admin@12345` | Universal Admin Portal (All-Access: Patient + Physio + Scraper & Consultant) |
 
 ---
 
 ## Quick Start (Run Locally)
 
-### 1. Start Python FastAPI Backend (Port 8000)
-
+### 1. Python FastAPI Backend (Port 8000)
 ```bash
 cd backend
-
-# Create & activate Python virtual environment
 python -m venv venv
 source venv/bin/activate       # On Windows: venv\Scripts\activate
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Run seed script (also runs automatically on startup)
-python seed_admin.py
-
-# Launch FastAPI server
+python seed_admin.py           # Auto-creates users and tables
 uvicorn main:app --reload --port 8000
 ```
-- API Base: `http://localhost:8000`
-- Interactive Swagger UI: `http://localhost:8000/docs`
 
-### 2. Start React Frontend (Port 3000)
-
+### 2. React Frontend (Port 3000)
 ```bash
-# In project root
 npm install
 npm run dev
 ```
-- Open `http://localhost:3000`
-- Test login with any demo account or register a new patient/physiotherapist.
+Open `http://localhost:3000`. You will immediately see the public MOVRA home page.

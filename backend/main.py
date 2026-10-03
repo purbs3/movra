@@ -14,13 +14,15 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from routes.api_routes import router as api_router
 from routes.auth_routes import router as auth_router
 from routes.subscription_routes import router as subscription_router
+from routes.booking_routes import router as booking_router
+from routes.physio_routes import router as physio_router
 from seed_admin import seed_users
 from database import engine, Base
 import models
 
 app = FastAPI(
     title="Movra AI Physiotherapy API",
-    description="Backend API powering AI Physio voice, clinical RAG reasoning, patient memory, Role-Based Authentication, and Subscriptions.",
+    description="Backend API powering AI Physio voice, clinical RAG reasoning, patient memory, Role-Based Authentication, Subscriptions, and Home Visit Bookings.",
     version="1.0.0"
 )
 
@@ -32,16 +34,15 @@ except Exception as e:
     print(f"[*] Seed note: {e}")
 
 # ==========================================
-# CORS CONFIGURATION (FINAL FIX)
-# allow_credentials=True ke saath "*" allow nahi hota, 
-# isliye frontend ka exact URL add karna zaroori hai.
+# CORS CONFIGURATION
 # ==========================================
 origins = [
     "http://localhost:3000",
     "http://localhost:5173",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
-    "https://movra-dvcs.vercel.app"  # <--- Aapka Vercel Live URL
+    "https://movra-dvcs.vercel.app",
+    "*"
 ]
 
 app.add_middleware(
@@ -55,6 +56,8 @@ app.add_middleware(
 # Register API routes
 app.include_router(auth_router)
 app.include_router(subscription_router)
+app.include_router(booking_router)
+app.include_router(physio_router)
 app.include_router(api_router)
 
 
