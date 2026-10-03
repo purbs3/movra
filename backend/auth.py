@@ -188,6 +188,10 @@ class RoleChecker:
             else str(current_user.role).lower()
         )
         
+        # Admin role has full access to all endpoints (patient, physio, and admin)
+        if user_role == "admin":
+            return current_user
+
         if user_role not in self.allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

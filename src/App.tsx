@@ -69,7 +69,7 @@ import {
   Exercise, 
   UserRole 
 } from './types';
-import { Activity, ShieldCheck, Sparkles, LogOut, User as UserIcon } from 'lucide-react';
+import { Activity, ShieldCheck, Sparkles, LogOut, User as UserIcon, ShieldAlert, Stethoscope, Users } from 'lucide-react';
 
 export default function App() {
   const { user, role, isAuthenticated, isLoading: isAuthLoading, logout } = useAuth();
@@ -77,14 +77,14 @@ export default function App() {
   // Auth navigation state when unauthenticated
   const [authView, setAuthView] = useState<'login' | 'signup' | 'forgot-password'>('login');
   
-  // Tab navigation state
-  const [currentTab, setCurrentTab] = useState<string>(() => {
+  // Tab navigation state typed to TabType
+  const [currentTab, setCurrentTab] = useState<TabType>(() => {
     const saved = localStorage.getItem('movra_auth_user');
     if (saved) {
       try {
         const u = JSON.parse(saved);
-        if (u.role === 'admin') return 'admin_overview';
-        if (u.role === 'physiotherapist') return 'caseload';
+        if (u.role === 'admin') return 'admin';
+        if (u.role === 'physiotherapist') return 'physio-dashboard';
       } catch {}
     }
     return 'dashboard';
@@ -99,12 +99,12 @@ export default function App() {
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState<boolean>(false);
   const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
 
-  // Sync default tab when user role changes
+  // Sync default tab when user role loads
   useEffect(() => {
     if (role === 'admin') {
-      setCurrentTab('admin_overview');
+      setCurrentTab('admin');
     } else if (role === 'physiotherapist') {
-      setCurrentTab('caseload');
+      setCurrentTab('physio-dashboard');
     } else if (role === 'patient') {
       setCurrentTab('dashboard');
     }
@@ -151,10 +151,10 @@ export default function App() {
   const handleAuthSuccess = (assignedRole: UserRole) => {
     if (assignedRole === 'admin') {
       window.history.replaceState(null, '', '/admin-dashboard');
-      setCurrentTab('admin_overview');
+      setCurrentTab('admin');
     } else if (assignedRole === 'physiotherapist') {
       window.history.replaceState(null, '', '/physio-dashboard');
-      setCurrentTab('caseload');
+      setCurrentTab('physio-dashboard');
     } else {
       window.history.replaceState(null, '', '/dashboard');
       setCurrentTab('dashboard');
@@ -319,7 +319,7 @@ export default function App() {
   }
 
   // -----------------------------------------------------------------------
-  // AUTHENTICATED STATE: Role-Based Dashboard Routing
+  // AUTHENTICATED STATE: Role-Based & Admin All-Access Content Routing
   // -----------------------------------------------------------------------
   return (
     <div className="min-h-screen bg-slate-100/70 text-slate-800 flex flex-col font-sans antialiased selection:bg-teal-500 selection:text-white">
@@ -357,82 +357,154 @@ export default function App() {
             </button>
           </div>
         </div>
+
+        {/* Admin All-Access Quick Jump Strip (Only for Admin) */}
+        {role === 'admin' && (
+          <div className="max-w-md mx-auto mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+            <span className="font-extrabold text-purple-900 flex items-center gap-1 text-[10px] uppercase tracking-wider">
+              <ShieldAlert className="w-3.5 h-3.5 text-purple-600" />
+              Admin All-Access:
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setCurrentTab('admin')}
+                className={`px-2 py-0.5 rounded-md font-bold transition-all ${
+                  currentTab === 'admin'
+                    ? 'bg-purple-600 text-white shadow-2xs'
+                    : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
+                }`}
+              >
+                Admin
+              </button>
+              <button
+                onClick={() => setCurrentTab('dashboard')}
+                className={`px-2 py-0.5 rounded-md font-bold transition-all ${
+                  currentTab === 'dashboard' || currentTab === 'chat' || currentTab === 'learn'
+                    ? 'bg-teal-600 text-white shadow-2xs'
+                    : 'bg-teal-50 text-teal-700 hover:bg-teal-100'
+                }`}
+              >
+                Patient
+              </button>
+              <button
+                onClick={() => setCurrentTab('physio-dashboard')}
+                className={`px-2 py-0.5 rounded-md font-bold transition-all ${
+                  currentTab === 'physio-dashboard' || currentTab === 'physio-alerts'
+                    ? 'bg-sky-600 text-white shadow-2xs'
+                    : 'bg-sky-50 text-sky-700 hover:bg-sky-100'
+                }`}
+              >
+                Physio
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
-      {/* Main Role Content Router */}
+      {/* Main Role Content Router: Supports Patient, Physio, and Admin All-Access */}
       <main className="flex-1 w-full max-w-md mx-auto bg-slate-50 border-x border-slate-200/60 shadow-xs">
-        {/* ROLE 1: Physiotherapist Dashboard */}
-        {role === 'physiotherapist' && (
-          <ProtectedRoute
-            allowedRoles={['physiotherapist']}
-            onRedirectToLogin={() => setAuthView('login')}
-            onRedirectToDashboard={(r) => handleAuthSuccess(r)}
-          >
-            {currentTab === 'progress' ? (
-              <ProgressView planData={planData} />
-            ) : (
-              <PhysioDashboard 
-                onLogout={logout} 
-                activeTab={currentTab} 
-              />
-            )}
-          </ProtectedRoute>
-        )}
-
-        {/* ROLE 2: Admin Dashboard */}
-        {role === 'admin' && (
+        {/* 1. Admin Dashboard View */}
+        {currentTab === 'admin' && (
           <ProtectedRoute
             allowedRoles={['admin']}
             onRedirectToLogin={() => setAuthView('login')}
             onRedirectToDashboard={(r) => handleAuthSuccess(r)}
           >
-            <AdminDashboard 
+            <AdminDashboard onLogout={logout} activeTab="admin_overview" />
+          </ProtectedRoute>
+        )}
+
+        {/* 2. Physio Caseload & Alerts Views (Accessible by Physio AND Admin) */}
+        {(currentTab === 'physio-dashboard' || currentTab === 'physio-alerts') && (
+          <ProtectedRoute
+            allowedRoles={['physiotherapist', 'admin']}
+            onRedirectToLogin={() => setAuthView('login')}
+            onRedirectToDashboard={(r) => handleAuthSuccess(r)}
+          >
+            <PhysioDashboard 
               onLogout={logout} 
-              activeTab={currentTab} 
+              activeTab={currentTab === 'physio-alerts' ? 'alerts' : 'caseload'} 
             />
           </ProtectedRoute>
         )}
 
-        {/* ROLE 3: Patient Dashboard & Tabs */}
-        {role === 'patient' && (
+        {/* 3. Patient Home (Accessible by Patient AND Admin) */}
+        {currentTab === 'dashboard' && (
           <ProtectedRoute
-            allowedRoles={['patient']}
+            allowedRoles={['patient', 'admin']}
             onRedirectToLogin={() => setAuthView('login')}
             onRedirectToDashboard={(r) => handleAuthSuccess(r)}
           >
-            {currentTab === 'dashboard' && (
-              <DashboardView
-                planData={planData}
-                onStartExercise={(ex) => {}}
-                onOpenVoiceModal={() => setIsVoiceModalOpen(true)}
-                onNavigateToChat={() => setCurrentTab('chat')}
-                onToggleExerciseComplete={handleToggleExercise}
-              />
-            )}
+            <DashboardView
+              planData={planData}
+              onStartExercise={(ex) => {}}
+              onOpenVoiceModal={() => setIsVoiceModalOpen(true)}
+              onNavigateToChat={() => setCurrentTab('chat')}
+              onToggleExerciseComplete={handleToggleExercise}
+            />
+          </ProtectedRoute>
+        )}
 
-            {currentTab === 'chat' && (
-              <ChatView
-                messages={messages}
-                onSendMessage={handleSendMessage}
-                onOpenVoiceModal={() => setIsVoiceModalOpen(true)}
-                memoryEnabled={memoryEnabled}
-                isLoading={isChatLoading}
-              />
-            )}
+        {/* 4. AI Physio Chat (Accessible by Patient AND Admin) */}
+        {currentTab === 'chat' && (
+          <ProtectedRoute
+            allowedRoles={['patient', 'admin']}
+            onRedirectToLogin={() => setAuthView('login')}
+            onRedirectToDashboard={(r) => handleAuthSuccess(r)}
+          >
+            <ChatView
+              messages={messages}
+              onSendMessage={handleSendMessage}
+              onOpenVoiceModal={() => setIsVoiceModalOpen(true)}
+              memoryEnabled={memoryEnabled}
+              isLoading={isChatLoading}
+            />
+          </ProtectedRoute>
+        )}
 
-            {currentTab === 'progress' && (
-              <ProgressView planData={planData} />
-            )}
+        {/* 5. Progress Telemetry (Accessible by Patient, Physio, AND Admin) */}
+        {currentTab === 'progress' && (
+          <ProtectedRoute
+            allowedRoles={['patient', 'physiotherapist', 'admin']}
+            onRedirectToLogin={() => setAuthView('login')}
+            onRedirectToDashboard={(r) => handleAuthSuccess(r)}
+          >
+            <ProgressView planData={planData} />
+          </ProtectedRoute>
+        )}
 
-            {currentTab === 'learn' && (
-              <LearnView />
-            )}
+        {/* 6. Patient Education / Learn (Accessible by Patient AND Admin) */}
+        {currentTab === 'learn' && (
+          <ProtectedRoute
+            allowedRoles={['patient', 'admin']}
+            onRedirectToLogin={() => setAuthView('login')}
+            onRedirectToDashboard={(r) => handleAuthSuccess(r)}
+          >
+            <LearnView />
+          </ProtectedRoute>
+        )}
 
-            {currentTab === 'subscription' && (
-              <SubscriptionView onBack={() => setCurrentTab('profile')} />
-            )}
+        {/* 7. Patient Subscription Plans */}
+        {currentTab === 'subscription' && (
+          <ProtectedRoute
+            allowedRoles={['patient', 'admin']}
+            onRedirectToLogin={() => setAuthView('login')}
+            onRedirectToDashboard={(r) => handleAuthSuccess(r)}
+          >
+            <SubscriptionView onBack={() => setCurrentTab('profile')} />
+          </ProtectedRoute>
+        )}
 
-            {currentTab === 'profile' && (
+        {/* 8. Profile View */}
+        {currentTab === 'profile' && (
+          <ProtectedRoute
+            allowedRoles={['patient', 'physiotherapist', 'admin']}
+            onRedirectToLogin={() => setAuthView('login')}
+            onRedirectToDashboard={(r) => handleAuthSuccess(r)}
+          >
+            {role === 'physiotherapist' ? (
+              <PhysioDashboard onLogout={logout} activeTab="profile" />
+            ) : (
               <ProfileView
                 patient={planData.patient}
                 memoryEnabled={memoryEnabled}
@@ -448,11 +520,11 @@ export default function App() {
         )}
       </main>
 
-      {/* Dynamic Role-Based Bottom Navigation Bar */}
+      {/* Dynamic Role-Based Bottom Navigation Bar (Admin sees all tabs) */}
       <BottomNav
         currentTab={currentTab}
         onTabChange={(tab) => setCurrentTab(tab)}
-        userRole={role || 'patient'}
+        role={role || 'patient'}
         memoryEnabled={memoryEnabled}
       />
 

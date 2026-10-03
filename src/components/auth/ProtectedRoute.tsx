@@ -33,6 +33,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return null;
   }
 
+  // Admin has full universal access to all routes (Patient, Physio, Admin)
+  if (user.role === 'admin') {
+    return <>{children}</>;
+  }
+
   // Logged in but incorrect role -> Redirect to their respective dashboard
   if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
     onRedirectToDashboard(user.role);
