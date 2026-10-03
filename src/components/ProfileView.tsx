@@ -15,7 +15,9 @@ import {
   ExternalLink,
   ChevronRight,
   Terminal,
-  Activity
+  Activity,
+  Crown,
+  Sparkles
 } from 'lucide-react';
 import { PatientProfile, RetainedContextItem } from '../types';
 
@@ -27,6 +29,7 @@ interface ProfileViewProps {
   onAddMemoryItem: (category: string, summary: string) => Promise<void>;
   onOpenDevDrawer: () => void;
   isBackendOnline: boolean;
+  onOpenSubscription?: () => void;
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({
@@ -37,6 +40,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onAddMemoryItem,
   onOpenDevDrawer,
   isBackendOnline,
+  onOpenSubscription,
 }) => {
   const [isAddingContext, setIsAddingContext] = useState(false);
   const [newCategory, setNewCategory] = useState('Pain Threshold');
@@ -146,6 +150,44 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Subscription & Membership Plan Card */}
+      {onOpenSubscription && (
+        <div className="bg-gradient-to-r from-teal-900 to-emerald-950 text-white rounded-3xl p-5 border border-teal-700/50 shadow-md shadow-teal-950/20 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-300">
+                <Crown className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block">
+                  Membership Status
+                </span>
+                <h3 className="text-sm font-extrabold text-white flex items-center gap-1.5">
+                  Recovery Subscription Plans
+                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                </h3>
+              </div>
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">
+              Pro & Free Tiers
+            </span>
+          </div>
+
+          <p className="text-xs text-teal-100/90 leading-relaxed">
+            Upgrade your recovery with real-time AI Voice physio consultations, on-device local Deepseek, and clinical reports.
+          </p>
+
+          <button
+            type="button"
+            onClick={onOpenSubscription}
+            className="w-full py-2.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition-all active:scale-98"
+          >
+            <span>View Plans & Upgrade to Pro</span>
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* AI Clinical Memory Toggle Card */}
       <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.04)] space-y-4">

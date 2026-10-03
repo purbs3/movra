@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldAlert, 
   LogOut, 
@@ -13,18 +13,33 @@ import {
   Database,
   Activity,
   Layers,
-  Sparkles
+  Sparkles,
+  Settings
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 
 interface AdminDashboardProps {
   onLogout: () => void;
+  activeTab?: string;
 }
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
+  onLogout, 
+  activeTab: externalTab = 'admin_overview' 
+}) => {
   const { user, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'scraper' | 'consultant' | 'overview'>('scraper');
+  const [activeTab, setActiveTab] = useState<'scraper' | 'consultant' | 'overview'>('overview');
+
+  useEffect(() => {
+    if (externalTab === 'scraper') {
+      setActiveTab('scraper');
+    } else if (externalTab === 'consultant') {
+      setActiveTab('consultant');
+    } else {
+      setActiveTab('overview');
+    }
+  }, [externalTab]);
 
   // Scraper State
   const [scrapeUrl, setScrapeUrl] = useState('https://www.aaos.org/quality/research');
@@ -131,6 +146,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       <div className="flex p-1 bg-slate-200/70 rounded-2xl">
         <button
           type="button"
+          onClick={() => setActiveTab('overview')}
+          className={`flex-1 py-2 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all ${
+            activeTab === 'overview'
+              ? 'bg-white text-purple-950 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Layers className="w-3.5 h-3.5 text-purple-600" />
+          <span>Overview</span>
+        </button>
+        <button
+          type="button"
           onClick={() => setActiveTab('scraper')}
           className={`flex-1 py-2 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all ${
             activeTab === 'scraper'
@@ -139,7 +166,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           }`}
         >
           <Globe className="w-3.5 h-3.5 text-purple-600" />
-          <span>Research Scraper</span>
+          <span>Scraper</span>
         </button>
         <button
           type="button"
@@ -154,6 +181,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           <span>Consultant</span>
         </button>
       </div>
+
+      {/* OVERVIEW TAB */}
+      {activeTab === 'overview' && (
+        <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-[0_2px_12px_rgba(0,0,0,0.03)] space-y-4 animate-in fade-in">
+          <h3 className="font-extrabold text-sm text-slate-800">Admin Control Center</h3>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Monitor platform subscriptions, review clinical protocols, and test AI agents in real-time.
+          </p>
+          <div className="space-y-2">
+            <div className="p-3 bg-purple-50 rounded-2xl border border-purple-100 flex items-center justify-between text-xs">
+              <span className="font-semibold text-purple-950">Active Subscription Plans</span>
+              <span className="font-bold text-purple-700">3 Tiers (Free, Pro, Clinic)</span>
+            </div>
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/60 flex items-center justify-between text-xs">
+              <span className="font-semibold text-slate-800">Registered Agents</span>
+              <span className="font-bold text-slate-700">9 AI Agents Operational</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* TAB 1: ScraperAgent */}
       {activeTab === 'scraper' && (

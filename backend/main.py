@@ -13,13 +13,14 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from routes.api_routes import router as api_router
 from routes.auth_routes import router as auth_router
+from routes.subscription_routes import router as subscription_router
 from seed_admin import seed_users
 from database import engine, Base
 import models
 
 app = FastAPI(
     title="Movra AI Physiotherapy API",
-    description="Backend API powering AI Physio voice, clinical RAG reasoning, patient memory, and Role-Based Authentication.",
+    description="Backend API powering AI Physio voice, clinical RAG reasoning, patient memory, Role-Based Authentication, and Subscriptions.",
     version="1.0.0"
 )
 
@@ -53,6 +54,7 @@ app.add_middleware(
 
 # Register API routes
 app.include_router(auth_router)
+app.include_router(subscription_router)
 app.include_router(api_router)
 
 
@@ -63,6 +65,11 @@ def root():
         "status": "online",
         "documentation": "/docs",
         "endpoints": [
+            "GET  /api/subscription/plans (Subscription tiers & features)",
+            "GET  /api/subscription/status/{user_id} (User subscription status & expiry)",
+            "POST /api/subscription/upgrade (Upgrade tier & extend 30 days)",
+            "POST /api/auth/login",
+            "POST /api/auth/signup",
             "POST /api/chat (Cloud Mode: Contextual AI RAGAgent + MemoryAgent)",
             "POST /api/local-chat (Private Mode: Ollama Deepseek-R1 + Qdrant LocalRAGAgent)",
             "GET  /api/learn/{topic} (Patient Education: TeachingAgent / Physio Professor)",

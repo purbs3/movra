@@ -34,6 +34,9 @@ import {
   ExerciseModal 
 } from './components/ExerciseModal';
 import { 
+  SubscriptionView 
+} from './components/SubscriptionView';
+import { 
   Login 
 } from './components/auth/Login';
 import { 
@@ -74,8 +77,18 @@ export default function App() {
   // Auth navigation state when unauthenticated
   const [authView, setAuthView] = useState<'login' | 'signup' | 'forgot-password'>('login');
   
-  // Patient tab navigation
-  const [currentTab, setCurrentTab] = useState<TabType>('dashboard');
+  // Tab navigation state
+  const [currentTab, setCurrentTab] = useState<string>(() => {
+    const saved = localStorage.getItem('movra_auth_user');
+    if (saved) {
+      try {
+        const u = JSON.parse(saved);
+        if (u.role === 'admin') return 'admin_overview';
+        if (u.role === 'physiotherapist') return 'caseload';
+      } catch {}
+    }
+    return 'dashboard';
+  });
   
   const [planData, setPlanData] = useState<TodayPlanData>(FALLBACK_TODAY_PLAN);
   const [retainedContext, setRetainedContext] = useState<RetainedContextItem[]>(FALLBACK_RETAINED_CONTEXT);
@@ -85,6 +98,17 @@ export default function App() {
   const [isDevDrawerOpen, setIsDevDrawerOpen] = useState<boolean>(false);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState<boolean>(false);
   const [isChatLoading, setIsChatLoading] = useState<boolean>(false);
+
+  // Sync default tab when user role changes
+  useEffect(() => {
+    if (role === 'admin') {
+      setCurrentTab('admin_overview');
+    } else if (role === 'physiotherapist') {
+      setCurrentTab('caseload');
+    } else if (role === 'patient') {
+      setCurrentTab('dashboard');
+    }
+  }, [role]);
 
   // Initial Chat Messages showcasing clinical interaction
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -127,8 +151,10 @@ export default function App() {
   const handleAuthSuccess = (assignedRole: UserRole) => {
     if (assignedRole === 'admin') {
       window.history.replaceState(null, '', '/admin-dashboard');
+      setCurrentTab('admin_overview');
     } else if (assignedRole === 'physiotherapist') {
       window.history.replaceState(null, '', '/physio-dashboard');
+      setCurrentTab('caseload');
     } else {
       window.history.replaceState(null, '', '/dashboard');
       setCurrentTab('dashboard');
@@ -342,7 +368,14 @@ export default function App() {
             onRedirectToLogin={() => setAuthView('login')}
             onRedirectToDashboard={(r) => handleAuthSuccess(r)}
           >
-            <PhysioDashboard onLogout={logout} />
+            {currentTab === 'progress' ? (
+              <ProgressView planData={planData} />
+            ) : (
+              <PhysioDashboard 
+                onLogout={logout} 
+                activeTab={currentTab} 
+              />
+            )}
           </ProtectedRoute>
         )}
 
@@ -353,7 +386,10 @@ export default function App() {
             onRedirectToLogin={() => setAuthView('login')}
             onRedirectToDashboard={(r) => handleAuthSuccess(r)}
           >
-            <AdminDashboard onLogout={logout} />
+            <AdminDashboard 
+              onLogout={logout} 
+              activeTab={currentTab} 
+            />
           </ProtectedRoute>
         )}
 
@@ -392,6 +428,10 @@ export default function App() {
               <LearnView />
             )}
 
+            {currentTab === 'subscription' && (
+              <SubscriptionView onBack={() => setCurrentTab('profile')} />
+            )}
+
             {currentTab === 'profile' && (
               <ProfileView
                 patient={planData.patient}
@@ -401,26 +441,20 @@ export default function App() {
                 onAddMemoryItem={handleAddMemoryItem}
                 onOpenDevDrawer={() => setIsDevDrawerOpen(true)}
                 isBackendOnline={isBackendOnline}
+                onOpenSubscription={() => setCurrentTab('subscription')}
               />
             )}
           </ProtectedRoute>
         )}
       </main>
 
-      {/* Patient Bottom Navigation (Only visible for Patient role) */}
-      {role === 'patient' && (
-        <BottomNav
-          currentTab={currentTab}
-          onTabChange={(tab) => {
-            if (tab === 'admin') {
-              alert('Access restricted: Only administrator accounts can view Admin Intelligence.');
-              return;
-            }
-            setCurrentTab(tab);
-          }}
-          memoryEnabled={memoryEnabled}
-        />
-      )}
+      {/* Dynamic Role-Based Bottom Navigation Bar */}
+      <BottomNav
+        currentTab={currentTab}
+        onTabChange={(tab) => setCurrentTab(tab)}
+        userRole={role || 'patient'}
+        memoryEnabled={memoryEnabled}
+      />
 
       {/* Real-time Voice Consultation Modal */}
       {isVoiceModalOpen && (
