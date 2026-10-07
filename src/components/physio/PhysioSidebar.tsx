@@ -45,6 +45,7 @@ export const PhysioSidebar: React.FC<PhysioSidebarProps> = ({
 
   const mainNavItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
+    { id: 'at-risk', label: 'At Risk Caseload', icon: AlertTriangle, badge: 3 },
     { id: 'requests', label: 'Booking Requests', icon: Inbox, badge: unreadRequestsCount },
     { id: 'appointments', label: 'Appointments', icon: Calendar },
     { id: 'visits', label: 'Home Visits & Routes', icon: Compass },
@@ -54,6 +55,7 @@ export const PhysioSidebar: React.FC<PhysioSidebarProps> = ({
   const clinicalSubItems = [
     { id: 'clinical-assessment', label: 'Initial Assessment', icon: FileText },
     { id: 'clinical-soap', label: 'SOAP & AI Assistant', icon: Activity },
+    { id: 'recovery-twin', label: 'AI Recovery Twin', icon: TrendingUp },
     { id: 'movement-analysis', label: 'Movement Analysis', icon: Video },
     { id: 'goals', label: 'Goals Management', icon: Target },
   ];

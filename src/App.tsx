@@ -21,6 +21,7 @@ import { LearnView } from './components/LearnView';
 import { SubscriptionView } from './components/SubscriptionView';
 import { PhysioDashboard } from './components/dashboards/PhysioDashboard';
 import { AdminDashboard } from './components/dashboards/AdminDashboard';
+import { RecoveryTwinView } from './components/RecoveryTwinView';
 
 // Booking Modals
 import { BookingAuthModal } from './components/public/BookingAuthModal';
@@ -346,6 +347,20 @@ export default function App() {
                 onRedirectToDashboard={(r) => handleAuthSuccess(r)}
               >
                 <ProgressView planData={planData} />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* AI Recovery Twin (Predictive Analytics) */}
+          <Route
+            path="/recovery-twin"
+            element={
+              <ProtectedRoute
+                allowedRoles={['patient', 'physiotherapist', 'admin']}
+              >
+                <div className="p-4 max-w-2xl mx-auto">
+                  <RecoveryTwinView onBack={() => navigate('/dashboard')} />
+                </div>
               </ProtectedRoute>
             }
           />

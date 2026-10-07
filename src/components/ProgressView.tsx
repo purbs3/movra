@@ -19,12 +19,14 @@ import {
 } from 'lucide-react';
 import { TodayPlanData, ClinicalMilestone, ProgressAnalyticsData } from '../types';
 import { api } from '../services/api';
+import { RecoveryTwinView } from './RecoveryTwinView';
 
 interface ProgressViewProps {
   planData: TodayPlanData;
 }
 
 export const ProgressView: React.FC<ProgressViewProps> = ({ planData }) => {
+  const [activeTab, setActiveTab] = useState<'analytics' | 'twin'>('analytics');
   const [selectedMilestone, setSelectedMilestone] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState<ProgressAnalyticsData | null>(null);
   const [isLoadingAnalytics, setIsLoadingAnalytics] = useState<boolean>(true);
@@ -110,11 +112,36 @@ export const ProgressView: React.FC<ProgressViewProps> = ({ planData }) => {
           Knee Recovery Analytics
         </h1>
         <p className="text-xs text-slate-500 mt-0.5">
-          Objective telemetry analyzed by Agno, DuckDB, and Pandas on recovery CSV.
+          Objective telemetry and AI recovery forecasting based on recovery metrics.
         </p>
+
+        {/* View Switcher: Historical Analytics vs AI Recovery Twin */}
+        <div className="flex p-1 bg-slate-100 rounded-2xl text-xs font-bold mt-4">
+          <button
+            onClick={() => setActiveTab('analytics')}
+            className={`flex-1 py-2 rounded-xl transition-all cursor-pointer ${
+              activeTab === 'analytics' ? 'bg-white text-slate-900 shadow-2xs font-extrabold' : 'text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            Historical Analytics
+          </button>
+          <button
+            onClick={() => setActiveTab('twin')}
+            className={`flex-1 py-2 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              activeTab === 'twin' ? 'bg-white text-teal-900 shadow-2xs font-extrabold' : 'text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <TrendingUp className="w-3.5 h-3.5 text-teal-700" />
+            <span>AI Recovery Twin</span>
+          </button>
+        </div>
       </div>
 
-      {/* AnalystAgent Insights Card */}
+      {activeTab === 'twin' ? (
+        <RecoveryTwinView patientId={planData.patient.id} />
+      ) : (
+        <>
+          {/* AnalystAgent Insights Card */}
       {analytics && (
         <div className="bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 text-white rounded-3xl p-5 shadow-lg shadow-teal-950/20 border border-teal-700/40 space-y-3.5">
           <div className="flex items-center justify-between">
@@ -400,6 +427,8 @@ export const ProgressView: React.FC<ProgressViewProps> = ({ planData }) => {
           })}
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 };

@@ -31,6 +31,7 @@ from agents.local_rag_agent import LocalRAGAgent
 from agents.teaching_agent import TeachingAgent
 from agents.scraper_agent import ScraperAgent
 from agents.consultant_agent import ConsultantAgent
+from agents.predictive_agent import PredictiveAgent
 from database import SessionLocal, PatientProgress, seed_patient_progress
 
 router = APIRouter(prefix="/api", tags=["Physiotherapy API"])
@@ -45,6 +46,7 @@ local_rag_agent = LocalRAGAgent()
 teaching_agent = TeachingAgent()
 scraper_agent = ScraperAgent()
 consultant_agent = ConsultantAgent()
+predictive_agent = PredictiveAgent(analyst_agent=analyst_agent, memory_agent=memory_agent)
 
 
 # =========================================================================
@@ -448,3 +450,43 @@ def add_patient_memory(request: AddMemoryItemRequest):
             "summary": request.summary
         }
     )
+
+
+# -------------------------------------------------------------------------
+# 10. Feature 1: AI Recovery Twin (Predictive Analytics)
+# -------------------------------------------------------------------------
+@router.get("/recovery-twin/{patient_id}")
+def get_recovery_twin(patient_id: str):
+    """
+    GET /api/recovery-twin/{patient_id}
+    Returns predictive trajectory analytics:
+    predicted_flexion_next_7d, predicted_pain_next_7d, dropout_risk_percentage, recommendation,
+    and counterfactual timeline comparison ('Regular' vs 'Skipped').
+    """
+    return predictive_agent.predict_recovery_trajectory(patient_id=patient_id)
+
+
+@router.get("/recovery-twin")
+def get_recovery_twin_default(patient_id: str = "rahul_123"):
+    return predictive_agent.predict_recovery_trajectory(patient_id=patient_id)
+
+
+# -------------------------------------------------------------------------
+# 11. Feature 2: Predictive Dropout Alert (For Physiotherapists)
+# -------------------------------------------------------------------------
+@router.get("/physio/at-risk-patients")
+def get_at_risk_patients():
+    """
+    GET /api/physio/at-risk-patients
+    Returns a list of caseload patients sorted by risk score (0-100%), with multi-factor clinical reasoning.
+    """
+    patients = predictive_agent.get_at_risk_patients()
+    return {
+        "status": "success",
+        "total_at_risk": len([p for p in patients if p["risk_level"] in ("HIGH", "MODERATE")]),
+        "high_risk_count": len([p for p in patients if p["risk_level"] == "HIGH"]),
+        "moderate_risk_count": len([p for p in patients if p["risk_level"] == "MODERATE"]),
+        "low_risk_count": len([p for p in patients if p["risk_level"] == "LOW"]),
+        "patients": patients
+    }
+

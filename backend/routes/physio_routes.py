@@ -28,6 +28,7 @@ from models import (
     PaymentRecord, 
     User
 )
+from agents.predictive_agent import predictive_agent
 
 router = APIRouter(prefix="/api/physio", tags=["Physiotherapist Clinical Panel"])
 
@@ -391,6 +392,23 @@ def get_patients_directory(
         patients = [p for p in patients if q in p["name"].lower() or q in p["condition"].lower() or q in p["phone"]]
 
     return {"status": "success", "total": len(patients), "patients": patients}
+
+
+@router.get("/at-risk-patients")
+def get_physio_at_risk_patients():
+    """
+    GET /api/physio/at-risk-patients
+    Returns patients sorted by dropout risk score (0-100%) with risk factors and recommended interventions.
+    """
+    patients = predictive_agent.get_at_risk_patients()
+    return {
+        "status": "success",
+        "total_at_risk": len([p for p in patients if p["risk_level"] in ("HIGH", "MODERATE")]),
+        "high_risk_count": len([p for p in patients if p["risk_level"] == "HIGH"]),
+        "moderate_risk_count": len([p for p in patients if p["risk_level"] == "MODERATE"]),
+        "low_risk_count": len([p for p in patients if p["risk_level"] == "LOW"]),
+        "patients": patients
+    }
 
 
 @router.get("/patients/{patient_id}")

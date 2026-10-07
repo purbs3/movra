@@ -52,6 +52,8 @@ import { PhysioReceiptModal } from '../physio/PhysioReceiptModal';
 import { PhysioNotificationsModal } from '../physio/PhysioNotificationsModal';
 import { ActiveVisitModal } from '../physio/ActiveVisitModal';
 import { PatientClinicalProfileModal } from '../physio/PatientClinicalProfileModal';
+import { PhysioAtRiskCaseloadView } from '../physio/PhysioAtRiskCaseloadView';
+import { RecoveryTwinView } from '../RecoveryTwinView';
 
 // Reusing existing ProgressView
 import { ProgressView } from '../ProgressView';
@@ -311,6 +313,24 @@ export const PhysioDashboard: React.FC<PhysioDashboardProps> = ({
             onNavigateTab={(tab) => setCurrentTab(tab)}
             onOpenNotifications={() => setIsNotificationsOpen(true)}
             physioProfile={physioProfile}
+          />
+        )}
+
+        {/* 1.1 At-Risk Caseload Alerts (Feature 2) */}
+        {currentTab === 'at-risk' && (
+          <PhysioAtRiskCaseloadView
+            onViewPatient={handleViewPatient}
+            onScheduleAppointment={(patient) => {
+              setCurrentTab('appointments');
+            }}
+          />
+        )}
+
+        {/* 1.2 AI Recovery Twin (Feature 1) */}
+        {currentTab === 'recovery-twin' && (
+          <RecoveryTwinView
+            patientId={selectedPatientId}
+            onBack={() => setCurrentTab('dashboard')}
           />
         )}
 
