@@ -190,8 +190,8 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
               <Sparkles className="w-4 h-4" />
             </span>
             <div>
-              <h3 className="font-bold text-slate-800 text-base">Movra AI Voice Physio</h3>
-              <p className="text-xs text-teal-700 font-medium">Real-time Clinical Speech Agent</p>
+              <h3 className="font-bold text-slate-800 text-base">MOVRA Recovery Assistant</h3>
+              <p className="text-xs text-teal-700 font-medium">Rehabilitation & Recovery Guidance</p>
             </div>
           </div>
           <button
@@ -204,8 +204,13 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
 
         {/* Modal Body */}
         <div className="p-6 flex flex-col items-center justify-center text-center space-y-6">
+          {/* Clinical Safety Disclaimer */}
+          <div className="w-full p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-500 text-left">
+            <strong>Clinical Notice:</strong> Ask about exercises, recovery routines, and pain tracking. AI assistance does not replace your physiotherapist or doctor.
+          </div>
+
           {/* Glowing Animated Mic Visualizer */}
-          <div className="relative my-4">
+          <div className="relative my-2">
             {/* Pulsing concentric rings when recording */}
             {isRecording && (
               <>
@@ -216,7 +221,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
 
             <button
               onClick={isRecording ? stopListening : startListening}
-              className={`relative z-10 w-24 h-24 rounded-full flex items-center justify-center shadow-xl transition-all duration-300 ${
+              className={`relative z-10 w-24 h-24 rounded-full flex items-center justify-center shadow-xl transition-all duration-300 cursor-pointer ${
                 isRecording
                   ? 'bg-rose-500 text-white scale-110 shadow-rose-500/30'
                   : isProcessing
@@ -240,17 +245,17 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
               {isRecording
                 ? 'Listening to Rahul...'
                 : isProcessing
-                ? 'Consulting Physical Therapy Agent...'
+                ? 'Reviewing recovery guidelines...'
                 : aiResponse
-                ? 'Physio Guidance Ready'
+                ? 'Recovery Guidance Ready'
                 : 'Tap Microphone to Speak'}
             </div>
             <p className="text-xs text-slate-500 mt-1 max-w-xs">
               {isRecording
-                ? 'Speak clearly about knee pain, joint clicks, or exercise form.'
+                ? 'Speak clearly about knee discomfort, routine pacing, or exercise questions.'
                 : isProcessing
                 ? 'Evaluating protocol guidelines & clinical memory...'
-                : 'Ask Dr. Movra anything about your Day 24 knee rehab.'}
+                : 'Ask questions about your daily physical therapy routine.'}
             </p>
           </div>
 

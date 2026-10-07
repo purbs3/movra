@@ -74,14 +74,14 @@ export const RecoveryTwinView: React.FC<RecoveryTwinViewProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">
-                AI Recovery Twin
+                Recovery Forecast
               </h2>
               <span className="text-[10px] font-mono font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
-                Predictive Analytics Engine
+                Experimental Trend Model
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Trajectory projection based on historical goniometry, pain trend velocity, and kinetic adherence.
+              Estimated recovery trend based on available data. Not a medical prediction.
             </p>
           </div>
 

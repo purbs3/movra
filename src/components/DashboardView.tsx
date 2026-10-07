@@ -23,7 +23,8 @@ import {
   FileText,
   UserCheck,
   Check,
-  RotateCcw
+  RotateCcw,
+  Info
 } from 'lucide-react';
 import { TodayPlanData, Exercise, BookingRequest } from '../types';
 import { ExerciseModal } from './ExerciseModal';
@@ -48,12 +49,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
   const [isExerciseModalOpen, setIsExerciseModalOpen] = useState(false);
-  const [isDietaryExpanded, setIsDietaryExpanded] = useState(false);
-  const [isReportsModalOpen, setIsReportsModalOpen] = useState(false);
-
-  // Bookings state
   const [bookings, setBookings] = useState<BookingRequest[]>([]);
-  const [isBookingsModalOpen, setIsBookingsModalOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -72,7 +68,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     setIsExerciseModalOpen(true);
   };
 
-  // Completed metrics
   const completedCount = planData.exercises.filter((e) => e.completed).length;
   const totalCount = planData.exercises.length;
   const exercisePercentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
@@ -82,26 +77,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="pb-24 pt-4 px-4 max-w-md mx-auto space-y-5 animate-in fade-in duration-200">
-      {/* Clinician Oversight & Demo Status Banner */}
-      <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium px-1">
-        <div className="flex items-center gap-1.5 text-teal-800 font-semibold">
-          <span className="w-2 h-2 rounded-full bg-teal-600"></span>
-          <span>Post-Op Day {planData.patient.post_op_day} · {planData.patient.surgery}</span>
-        </div>
-        <span className="text-[10px] text-slate-400 font-mono bg-slate-100 px-2 py-0.5 rounded">
-          Demo Clinical Telemetry
-        </span>
-      </div>
-
-      {/* Patient Greeting & Recovery Score Header */}
+      {/* Patient Greeting & Status Header */}
       <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs space-y-4">
         <div className="flex items-start justify-between">
           <div>
+            <div className="flex items-center gap-1.5 text-[11px] font-bold text-teal-800 uppercase tracking-wider mb-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span>Status: ON TRACK · Post-Op Day {planData.patient.post_op_day}</span>
+            </div>
             <h1 className="text-xl font-bold text-slate-950 tracking-tight">
               {greeting}
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              Recovery roadmap verified by primary physiotherapist.
+              Condition: {planData.patient.surgery || 'Right Knee Replacement (TKA)'}
             </p>
           </div>
           <div className="w-10 h-10 rounded-xl bg-slate-900 text-white font-bold text-xs flex items-center justify-center">
@@ -109,19 +97,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {/* Core KPI Metrics Grid (Section 8: Score, Pain Trend, Exercises, Next Appt) */}
+        {/* Core KPI Metrics Grid */}
         <div className="grid grid-cols-2 gap-2.5 pt-1">
-          {/* Recovery Score */}
+          {/* Weekly Recovery Goal */}
           <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/70">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-              Recovery Score
+              Weekly Recovery Goal
             </span>
             <div className="flex items-baseline gap-1.5 mt-0.5">
-              <span className="text-2xl font-black text-slate-950 font-mono">{recoveryScore}%</span>
+              <span className="text-2xl font-black text-slate-950 font-mono">80%</span>
               <span className="text-[10px] text-teal-700 font-semibold">On Track</span>
             </div>
             <div className="w-full h-1.5 bg-slate-200 rounded-full mt-2 overflow-hidden">
-              <div className="h-full bg-teal-700 rounded-full" style={{ width: `${recoveryScore}%` }} />
+              <div className="h-full bg-teal-700 rounded-full" style={{ width: `80%` }} />
             </div>
           </div>
 
@@ -179,7 +167,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   PT
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 font-medium">Primary Physiotherapist · Patna Hub</p>
+              <p className="text-[11px] text-slate-500 font-medium">Assigned Physiotherapist · Patna Hub</p>
             </div>
           </div>
           <a
@@ -260,8 +248,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-2xs space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Prescribed Regimen
+            <span className="text-[10px] font-bold uppercase tracking-wider text-teal-800">
+              Assigned by your physiotherapist
             </span>
             <h2 className="text-base font-bold text-slate-950 mt-0.5">
               Today's Rehabilitation Routine
@@ -325,31 +313,36 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Consistency Streak & Quick Voice Consultation Card */}
+      {/* Recovery Assistant Card */}
       <div className="bg-slate-900 text-white rounded-2xl p-5 border border-slate-800 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Flame className="w-4 h-4 text-amber-400" />
-            <span className="text-xs font-bold text-white">6-Day Rehabilitation Streak</span>
+            <Sparkles className="w-4 h-4 text-teal-400" />
+            <span className="text-xs font-bold text-white">MOVRA Recovery Assistant</span>
           </div>
-          <span className="text-[10px] font-mono text-teal-400">94% Adherence</span>
+          <span className="text-[10px] font-mono text-teal-300">Recovery Insights</span>
         </div>
 
         <p className="text-xs text-slate-300 leading-relaxed font-normal">
-          Consistent daily terminal extension prevents flexion contracture and accelerates unassisted cane walking.
+          Ask about your exercises, recovery routine, pain tracking and general rehabilitation information.
         </p>
 
-        <div className="pt-2 flex items-center gap-2">
+        <div className="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800 text-[11px] text-slate-400 flex items-center gap-2">
+          <Info className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+          <span>AI assistance does not replace your physiotherapist or doctor.</span>
+        </div>
+
+        <div className="pt-1 flex items-center gap-2">
           <button
             onClick={onOpenVoiceModal}
-            className="flex-1 py-2.5 px-3 rounded-xl bg-white text-slate-950 font-bold text-xs hover:bg-slate-100 flex items-center justify-center gap-2 cursor-pointer"
+            className="flex-1 py-2.5 px-3 rounded-xl bg-white text-slate-950 font-bold text-xs hover:bg-slate-100 flex items-center justify-center gap-2 cursor-pointer transition-colors"
           >
             <Mic className="w-3.5 h-3.5 text-teal-700" />
-            <span>Voice Form Consultation</span>
+            <span>Talk to Recovery Assistant</span>
           </button>
           <button
             onClick={onNavigateToChat}
-            className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer"
+            className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 cursor-pointer transition-colors"
             title="Open Chat"
           >
             <ChevronRight className="w-4 h-4" />

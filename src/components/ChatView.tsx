@@ -39,10 +39,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const quickReplyChips = [
-    "My knee clicks",
-    "Ice or heat?",
-    "Form check",
-    "Can I walk 2,000 steps?"
+    "Log Pain",
+    "Today's Exercises",
+    "My Progress",
+    "Next Appointment",
+    "Ice or heat after walking?"
   ];
 
   // Auto-scroll to bottom of chat
@@ -101,16 +102,16 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
             <div>
               <div className="flex items-center gap-1.5">
-                <h2 className="font-bold text-slate-800 text-sm">Dr. Movra AI</h2>
+                <h2 className="font-bold text-slate-800 text-sm">MOVRA Recovery Assistant</h2>
                 <span className={`text-[10px] px-1.5 py-0.2 rounded font-semibold border ${
                   isPrivateMode 
                     ? 'text-slate-700 bg-slate-100 border-slate-300' 
                     : 'text-teal-700 bg-teal-50 border-teal-200/60'
                 }`}>
-                  {isPrivateMode ? 'Deepseek Local' : 'RAG + Mem0'}
+                  {isPrivateMode ? 'Deepseek Local' : 'Clinical RAG'}
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400">Context: Post-Op Day 14 Knee Rehab</p>
+              <p className="text-[11px] text-slate-400">Recovery &amp; Exercise Adherence Support</p>
             </div>
           </div>
 
