@@ -5,10 +5,13 @@ Provides end-to-end endpoints for:
 - Booking requests (Accept, Reject, Reschedule)
 - Appointments & Home Visit lifecycle (Start, Complete, Route sequencing)
 - Patient Clinical Profiles & Timelines
-- Initial Assessments & SOAP notes with AI Assistance
+- Initial Assessments & SOAP notes with AI Assistance and Audit Logging
+- Clinical AI Approval Gate (Review, Approve, Reject, Modify AI-generated plans)
 - Home Exercise Program builder & Goal tracking
 - Earnings, Invoices & Follow-ups
+Enforces real server-side RBAC via require_physio on all clinical endpoints.
 """
+import json
 import random
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
@@ -26,14 +29,21 @@ from models import (
     SOAPNote, 
     PatientGoal, 
     PaymentRecord, 
-    User
+    User,
+    AuditLog,
+    RehabPlan,
+    PlanApprovalStatus
 )
+from auth import require_physio, require_admin, get_current_user
 from agents.predictive_agent import predictive_agent
 
 router = APIRouter(prefix="/api/physio", tags=["Physiotherapist Clinical Panel"])
 
 
+# =========================================================================
 # Request Models
+# =========================================================================
+
 class AcceptBookingPayload(BaseModel):
     therapist_name: Optional[str] = "Dr. Ananya Iyer, PT"
     notes: Optional[str] = None
@@ -83,11 +93,29 @@ class MovementAnalysisPayload(BaseModel):
     repetitions: Optional[int] = 10
     duration_seconds: Optional[int] = 45
 
+class ApprovePlanPayload(BaseModel):
+    notes: Optional[str] = "Clinician approved daily exercise dosage and safety guidelines."
+
+class RejectPlanPayload(BaseModel):
+    reason: str = Field(..., example="Extension lag requires bedside therapist assistance before loaded heel slides.")
+
+class ModifyPlanPayload(BaseModel):
+    plan_data: Dict[str, Any]
+    clinical_notes: Optional[str] = "Modified by supervising physiotherapist."
+
+
+# =========================================================================
+# Dashboard & Appointments
+# =========================================================================
 
 @router.get("/dashboard-summary")
-def get_dashboard_summary(db: Session = Depends(get_db)):
+def get_dashboard_summary(
+    current_clinician: User = Depends(require_physio),
+    db: Session = Depends(get_db)
+):
     """
     Returns today's high-level operational clinical telemetry for the logged-in therapist.
+    Requires Physiotherapist credentials.
     """
     today_str = datetime.utcnow().strftime("%Y-%m-%d")
     pending_bookings = db.query(Booking).filter(Booking.status == "PENDING").count()
@@ -100,7 +128,8 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
     return {
         "status": "success",
         "physiotherapist": {
-            "name": "Dr. Ananya Iyer, PT",
+            "name": current_clinician.full_name or "Dr. Ananya Iyer, PT",
+            "email": current_clinician.email,
             "qualification": "BPT, MPT • Orthopedic & Neuro Rehabilitation Specialist",
             "experience": "8+ Years Clinical Practice",
             "license": "PT-IN-88921-A",
@@ -122,11 +151,13 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
 def get_appointments(
     view: str = Query("today", example="today"),
     status_filter: Optional[str] = None,
+    current_clinician: User = Depends(require_physio),
     db: Session = Depends(get_db)
 ):
     """
     GET /api/physio/appointments
     Returns appointments segmented by TODAY, WEEK, or MONTH with statuses.
+    Requires Physiotherapist credentials.
     """
     query = db.query(Appointment)
     if status_filter:
@@ -149,6 +180,7 @@ def get_appointments(
 def update_appointment_status(
     appointment_id: int,
     status_value: str = Query(..., example="IN_PROGRESS"),
+    current_clinician: User = Depends(require_physio),
     db: Session = Depends(get_db)
 ):
     appt = db.query(Appointment).filter(Appointment.id == appointment_id).first()
@@ -161,23 +193,50 @@ def update_appointment_status(
     return {"status": "success", "appointment": appt.to_dict()}
 
 
+@router.post("/appointments/{appointment_id}/reschedule")
+def reschedule_appointment(
+    appointment_id: int,
+    payload: RescheduleBookingPayload,
+    current_clinician: User = Depends(require_physio),
+    db: Session = Depends(get_db)
+):
+    appt = db.query(Appointment).filter(Appointment.id == appointment_id).first()
+    if not appt:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    appt.date = payload.new_date
+    appt.time = payload.new_time
+    appt.status = "RESCHEDULED"
+    if payload.reason:
+        appt.notes = f"Rescheduled: {payload.reason}"
+    db.commit()
+    db.refresh(appt)
+
+    return {
+        "status": "success",
+        "message": f"Appointment #{appointment_id} rescheduled to {payload.new_date} at {payload.new_time}.",
+        "appointment": appt.to_dict()
+    }
+
+
 @router.post("/bookings/{booking_id}/accept")
 def accept_booking(
     booking_id: int,
     payload: AcceptBookingPayload,
+    current_clinician: User = Depends(require_physio),
     db: Session = Depends(get_db)
 ):
     """
     Accepts an incoming home visit request and creates a confirmed appointment.
+    Requires Physiotherapist credentials.
     """
     booking = db.query(Booking).filter(Booking.id == booking_id).first()
     if not booking:
         raise HTTPException(status_code=404, detail="Booking request not found")
 
     booking.status = "CONFIRMED"
-    booking.physiotherapist = payload.therapist_name or "Dr. Ananya Iyer, PT"
+    booking.physiotherapist = payload.therapist_name or current_clinician.full_name or "Dr. Ananya Iyer, PT"
 
-    # Create associated confirmed appointment
     ref_appt = f"APT-{random.randint(1000, 9999)}"
     appt = Appointment(
         reference_id=ref_appt,
@@ -213,6 +272,7 @@ def accept_booking(
 def reject_booking(
     booking_id: int,
     payload: RejectBookingPayload,
+    current_clinician: User = Depends(require_physio),
     db: Session = Depends(get_db)
 ):
     booking = db.query(Booking).filter(Booking.id == booking_id).first()
@@ -220,36 +280,26 @@ def reject_booking(
         raise HTTPException(status_code=404, detail="Booking not found")
 
     booking.status = "REJECTED"
-    booking.message = f"{booking.message or ''} | Rejection note: {payload.reason}"
-    db.commit()
-    return {"status": "success", "message": "Booking request marked as rejected."}
-
-
-@router.post("/bookings/{booking_id}/reschedule")
-def reschedule_booking(
-    booking_id: int,
-    payload: RescheduleBookingPayload,
-    db: Session = Depends(get_db)
-):
-    booking = db.query(Booking).filter(Booking.id == booking_id).first()
-    if not booking:
-        raise HTTPException(status_code=404, detail="Booking not found")
-
-    booking.status = "RESCHEDULED"
-    booking.preferred_date = payload.new_date
-    booking.preferred_time = payload.new_time
     db.commit()
     return {
         "status": "success",
-        "message": f"Booking rescheduled to {payload.new_date} at {payload.new_time}.",
+        "message": f"Booking {booking.reference_id} marked as REJECTED. Reason: {payload.reason}.",
         "booking": booking.to_dict()
     }
 
 
+# =========================================================================
+# Home Visit Lifecycle & Route Sequencing
+# =========================================================================
+
 @router.get("/visits/today")
-def get_todays_visits(db: Session = Depends(get_db)):
+def get_todays_visits(
+    current_clinician: User = Depends(require_physio),
+    db: Session = Depends(get_db)
+):
     """
     Returns ordered stops for today's travelling home-visit route.
+    Requires Physiotherapist credentials.
     """
     appts = db.query(Appointment).filter(Appointment.status.in_(["CONFIRMED", "IN_PROGRESS", "COMPLETED"])).all()
     if not appts:
@@ -280,7 +330,11 @@ def get_todays_visits(db: Session = Depends(get_db)):
 
 
 @router.post("/visits/{appointment_id}/start")
-def start_visit(appointment_id: int, db: Session = Depends(get_db)):
+def start_visit(
+    appointment_id: int,
+    current_clinician: User = Depends(require_physio),
+    db: Session = Depends(get_db)
+):
     appt = db.query(Appointment).filter(Appointment.id == appointment_id).first()
     if not appt:
         raise HTTPException(status_code=404, detail="Appointment not found")
@@ -295,7 +349,11 @@ def start_visit(appointment_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/visits/{appointment_id}/complete")
-def complete_visit(appointment_id: int, db: Session = Depends(get_db)):
+def complete_visit(
+    appointment_id: int,
+    current_clinician: User = Depends(require_physio),
+    db: Session = Depends(get_db)
+):
     appt = db.query(Appointment).filter(Appointment.id == appointment_id).first()
     if not appt:
         raise HTTPException(status_code=404, detail="Appointment not found")
@@ -303,7 +361,6 @@ def complete_visit(appointment_id: int, db: Session = Depends(get_db)):
     appt.status = "COMPLETED"
     appt.payment_status = "PAID"
     
-    # Record payment entry
     pay = PaymentRecord(
         reference_id=f"PAY-{random.randint(10000, 99999)}",
         patient_id=appt.patient_id,
@@ -325,13 +382,19 @@ def complete_visit(appointment_id: int, db: Session = Depends(get_db)):
     }
 
 
+# =========================================================================
+# Patient Caseload & Clinical Profiles
+# =========================================================================
+
 @router.get("/patients")
 def get_patients_directory(
     query: Optional[str] = None,
-    filter_category: Optional[str] = "all"
+    filter_category: Optional[str] = "all",
+    current_clinician: User = Depends(require_physio)
 ):
     """
     Returns full clinical caseload patient list with rehabilitation parameters.
+    Requires Physiotherapist credentials.
     """
     patients = [
         {
@@ -389,13 +452,13 @@ def get_patients_directory(
 
     if query:
         q = query.lower()
-        patients = [p for p in patients if q in p["name"].lower() or q in p["condition"].lower() or q in p["phone"]]
+        patients = [p for p in patients if q in p["name"].lower() or q in p["condition"].lower() or q in p["area"].lower()]
 
     return {"status": "success", "total": len(patients), "patients": patients}
 
 
 @router.get("/at-risk-patients")
-def get_physio_at_risk_patients():
+def get_at_risk_patients(current_clinician: User = Depends(require_physio)):
     """
     GET /api/physio/at-risk-patients
     Returns patients sorted by dropout risk score (0-100%) with risk factors and recommended interventions.
@@ -412,9 +475,14 @@ def get_physio_at_risk_patients():
 
 
 @router.get("/patients/{patient_id}")
-def get_patient_clinical_profile(patient_id: str, db: Session = Depends(get_db)):
+def get_patient_clinical_profile(
+    patient_id: str,
+    current_clinician: User = Depends(require_physio),
+    db: Session = Depends(get_db)
+):
     """
     Returns full medical overview, goals, surgical history, and chronological timeline.
+    Requires Physiotherapist credentials.
     """
     soap_records = db.query(SOAPNote).filter(SOAPNote.patient_id == patient_id).order_by(desc(SOAPNote.created_at)).all()
     goals = db.query(PatientGoal).filter(PatientGoal.patient_id == patient_id).all()
@@ -452,8 +520,15 @@ def get_patient_clinical_profile(patient_id: str, db: Session = Depends(get_db))
     }
 
 
+# =========================================================================
+# Clinical SOAP & AI Assistant (With Mandatory Audit Trail)
+# =========================================================================
+
 @router.post("/soap/ai-draft")
-def generate_ai_soap_draft(payload: AIDraftSOAPPayload):
+def generate_ai_soap_draft(
+    payload: AIDraftSOAPPayload,
+    current_clinician: User = Depends(require_physio)
+):
     """
     AI Clinical SOAP Assistant:
     Synthesizes objective delta between visits and creates a structured SOAP draft.
@@ -499,11 +574,17 @@ def generate_ai_soap_draft(payload: AIDraftSOAPPayload):
 def save_soap_note(
     patient_id: str,
     payload: SaveSOAPPayload,
+    current_clinician: User = Depends(require_physio),
     db: Session = Depends(get_db)
 ):
+    """
+    Finalizes clinical SOAP note into permanent patient record.
+    Generates server-side Audit Log for clinical accountability.
+    """
     note = SOAPNote(
         patient_id=patient_id,
         date=datetime.utcnow().strftime("%d %b %Y"),
+        therapist_name=current_clinician.full_name or "Dr. Ananya Iyer, PT",
         subjective=payload.subjective,
         objective=payload.objective,
         assessment=payload.assessment,
@@ -513,6 +594,16 @@ def save_soap_note(
         status="FINALIZED"
     )
     db.add(note)
+    
+    # Audit trail entry
+    audit = AuditLog(
+        actor_email=current_clinician.email,
+        action="SOAP_NOTE_FINALIZED",
+        target_type="SOAPNote",
+        target_id=patient_id,
+        reason=f"Clinical note finalized by {current_clinician.full_name} (AI Assisted: {payload.ai_assisted})"
+    )
+    db.add(audit)
     db.commit()
     db.refresh(note)
 
@@ -524,13 +615,161 @@ def save_soap_note(
 
 
 @router.get("/patients/{patient_id}/soap")
-def get_patient_soaps(patient_id: str, db: Session = Depends(get_db)):
+def get_patient_soaps(
+    patient_id: str,
+    current_clinician: User = Depends(require_physio),
+    db: Session = Depends(get_db)
+):
     notes = db.query(SOAPNote).filter(SOAPNote.patient_id == patient_id).order_by(desc(SOAPNote.created_at)).all()
     return {"status": "success", "notes": [n.to_dict() for n in notes]}
 
 
+# =========================================================================
+# CLINICAL AI APPROVAL GATE (Rehabilitation Plans)
+# State Machine: DRAFT -> PENDING_REVIEW -> APPROVED / REJECTED / MODIFIED -> VISIBLE_TO_PATIENT
+# =========================================================================
+
+@router.get("/rehab-plans/pending")
+def get_pending_rehab_plans(
+    current_clinician: User = Depends(require_physio),
+    db: Session = Depends(get_db)
+):
+    """
+    Returns AI-generated exercise and rehabilitation plans awaiting clinician sign-off.
+    """
+    plans = db.query(RehabPlan).filter(RehabPlan.status == PlanApprovalStatus.PENDING_REVIEW).order_by(desc(RehabPlan.created_at)).all()
+    return {
+        "status": "success",
+        "total_pending": len(plans),
+        "plans": [p.to_dict() for p in plans]
+    }
+
+
+@router.post("/rehab-plans/{plan_id}/approve")
+def approve_rehab_plan(
+    plan_id: int,
+    payload: Optional[ApprovePlanPayload] = None,
+    current_clinician: User = Depends(require_physio),
+    db: Session = Depends(get_db)
+):
+    """
+    Physiotherapist signs off and approves the AI-generated rehabilitation plan.
+    Transitions status to APPROVED so it becomes visible to the patient.
+    """
+    plan = db.query(RehabPlan).filter(RehabPlan.id == plan_id).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Rehabilitation plan not found")
+
+    plan.status = PlanApprovalStatus.APPROVED
+    plan.reviewed_by = current_clinician.full_name or "Dr. Ananya Iyer, PT"
+    plan.reviewed_at = datetime.utcnow()
+    if payload and payload.notes:
+        plan.clinical_notes = payload.notes
+
+    # Create immutable audit log
+    audit = AuditLog(
+        actor_email=current_clinician.email,
+        action="CLINICAL_AI_PLAN_APPROVED",
+        target_type="RehabPlan",
+        target_id=str(plan_id),
+        reason=payload.notes if payload else "Approved by supervising physiotherapist"
+    )
+    db.add(audit)
+    db.commit()
+    db.refresh(plan)
+
+    return {
+        "status": "success",
+        "message": f"Rehabilitation plan #{plan_id} for patient {plan.patient_id} APPROVED and made visible to patient.",
+        "plan": plan.to_dict()
+    }
+
+
+@router.post("/rehab-plans/{plan_id}/reject")
+def reject_rehab_plan(
+    plan_id: int,
+    payload: RejectPlanPayload,
+    current_clinician: User = Depends(require_physio),
+    db: Session = Depends(get_db)
+):
+    """
+    Physiotherapist rejects the AI draft.
+    Prevents patient from viewing unapproved exercise dosages.
+    """
+    plan = db.query(RehabPlan).filter(RehabPlan.id == plan_id).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Rehabilitation plan not found")
+
+    plan.status = PlanApprovalStatus.REJECTED
+    plan.reviewed_by = current_clinician.full_name or "Dr. Ananya Iyer, PT"
+    plan.reviewed_at = datetime.utcnow()
+    plan.clinical_notes = payload.reason
+
+    audit = AuditLog(
+        actor_email=current_clinician.email,
+        action="CLINICAL_AI_PLAN_REJECTED",
+        target_type="RehabPlan",
+        target_id=str(plan_id),
+        reason=payload.reason
+    )
+    db.add(audit)
+    db.commit()
+    db.refresh(plan)
+
+    return {
+        "status": "success",
+        "message": f"Rehabilitation plan #{plan_id} marked as REJECTED.",
+        "plan": plan.to_dict()
+    }
+
+
+@router.put("/rehab-plans/{plan_id}/modify")
+def modify_rehab_plan(
+    plan_id: int,
+    payload: ModifyPlanPayload,
+    current_clinician: User = Depends(require_physio),
+    db: Session = Depends(get_db)
+):
+    """
+    Physiotherapist edits exercise dosages or instructions and approves the customized plan.
+    """
+    plan = db.query(RehabPlan).filter(RehabPlan.id == plan_id).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Rehabilitation plan not found")
+
+    plan.plan_data = json.dumps(payload.plan_data)
+    plan.status = PlanApprovalStatus.MODIFIED
+    plan.reviewed_by = current_clinician.full_name or "Dr. Ananya Iyer, PT"
+    plan.reviewed_at = datetime.utcnow()
+    plan.clinical_notes = payload.clinical_notes
+
+    audit = AuditLog(
+        actor_email=current_clinician.email,
+        action="CLINICAL_AI_PLAN_MODIFIED",
+        target_type="RehabPlan",
+        target_id=str(plan_id),
+        reason=payload.clinical_notes or "Modified by supervising therapist"
+    )
+    db.add(audit)
+    db.commit()
+    db.refresh(plan)
+
+    return {
+        "status": "success",
+        "message": f"Rehabilitation plan #{plan_id} customized and committed.",
+        "plan": plan.to_dict()
+    }
+
+
+# =========================================================================
+# Movement Analysis & Telemetry
+# =========================================================================
+
 @router.post("/movement-analysis")
-def analyze_movement(payload: MovementAnalysisPayload):
+def analyze_movement(
+    payload: MovementAnalysisPayload,
+    current_clinician: User = Depends(require_physio)
+):
     """
     Movement / Camera Angle Estimator:
     Returns estimated joint angle change with safety verification prompt.
@@ -552,9 +791,13 @@ def analyze_movement(payload: MovementAnalysisPayload):
 
 
 @router.get("/earnings")
-def get_earnings_report(db: Session = Depends(get_db)):
+def get_earnings_report(
+    current_clinician: User = Depends(require_physio),
+    db: Session = Depends(get_db)
+):
     """
     Returns revenue breakdown and transaction ledger.
+    Requires Physiotherapist credentials.
     """
     transactions = [
         {"id": 1, "date": "12 Oct 2026", "patient": "Rahul Sharma", "service": "Home Visit Session", "amount": 750, "method": "UPI", "status": "PAID"},
@@ -575,7 +818,7 @@ def get_earnings_report(db: Session = Depends(get_db)):
 
 
 @router.get("/follow-ups")
-def get_follow_ups():
+def get_follow_ups(current_clinician: User = Depends(require_physio)):
     """
     Returns clinical follow-up watchlist for post-op safety.
     """

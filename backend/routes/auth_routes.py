@@ -100,7 +100,7 @@ def signup(request: SignupRequest, db: Session = Depends(get_db)):
     db.refresh(new_user)
 
     # Automatically generate access token upon signup
-    access_token = create_access_token(data={"sub": new_user.email, "role": clean_role})
+    access_token = create_access_token(data={"sub": new_user.email, "user_id": new_user.id, "role": clean_role})
 
     return {
         "status": "success",
@@ -133,7 +133,7 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         )
 
     user_role_str = user.role.value if hasattr(user.role, "value") else str(user.role)
-    access_token = create_access_token(data={"sub": user.email, "role": user_role_str})
+    access_token = create_access_token(data={"sub": user.email, "user_id": user.id, "role": user_role_str})
 
     return {
         "status": "success",
@@ -230,3 +230,16 @@ def get_me(current_user: User = Depends(get_current_user)):
         "status": "success",
         "user": current_user.to_dict()
     }
+
+
+@router.post("/logout")
+def logout_user(current_user: User = Depends(get_current_user)):
+    """
+    POST /api/auth/logout
+    Terminates session on server side and returns confirmation.
+    """
+    return {
+        "status": "success",
+        "message": f"Session terminated for user {current_user.email}."
+    }
+

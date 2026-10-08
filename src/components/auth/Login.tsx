@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
 import { 
-  Activity, 
   Lock, 
   Mail, 
   ArrowRight, 
-  ShieldCheck, 
   AlertCircle, 
+  Eye, 
+  EyeOff, 
+  Loader2, 
   UserCheck, 
-  Sparkles,
-  Stethoscope,
-  ShieldAlert
+  Stethoscope, 
+  Code2,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
+import { AuthLayout } from './AuthLayout';
 import { useAuth } from '../../context/AuthContext';
 import { UserRole } from '../../types';
 
@@ -23,27 +26,55 @@ export const Login: React.FC<LoginProps> = ({ onNavigate, onSuccessRedirect }) =
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showDemoDrawer, setShowDemoDrawer] = useState(false);
+
+  // Demo accounts are gated behind an environment feature flag (disabled in production)
+  const isDemoModeEnabled = import.meta.env.VITE_ENABLE_DEMO_AUTH === 'true';
+
+  const validateForm = (): boolean => {
+    if (!email.trim()) {
+      setError('Please enter your email address.');
+      return false;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setError('Please enter a valid email address.');
+      return false;
+    }
+    if (!password) {
+      setError('Please enter your password.');
+      return false;
+    }
+    return true;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password || isLoading) return;
+    if (isLoading) return;
+
+    if (!validateForm()) return;
 
     setError(null);
     setIsLoading(true);
 
-    const res = await login(email, password);
-    setIsLoading(false);
+    try {
+      const res = await login(email.trim().toLowerCase(), password);
+      setIsLoading(false);
 
-    if (res.success && res.role) {
-      onSuccessRedirect(res.role);
-    } else {
-      setError(res.error || 'Authentication failed. Please verify your credentials.');
+      if (res.success && res.role) {
+        onSuccessRedirect(res.role);
+      } else {
+        setError(res.error || 'Authentication failed. Please verify your email and password.');
+      }
+    } catch {
+      setIsLoading(false);
+      setError('Unable to reach the authentication service. Please check your connection.');
     }
   };
 
-  // Quick fill helper for testing the 3 seeded roles
   const handleQuickFill = (demoEmail: string, demoPass: string) => {
     setEmail(demoEmail);
     setPassword(demoPass);
@@ -51,134 +82,205 @@ export const Login: React.FC<LoginProps> = ({ onNavigate, onSuccessRedirect }) =
   };
 
   return (
-    <div className="min-h-[85vh] flex flex-col justify-center px-4 max-w-md mx-auto animate-in fade-in duration-300">
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-[0_8px_30px_rgba(0,0,0,0.06)] space-y-6">
-        {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex w-12 h-12 rounded-2xl bg-teal-600 text-white items-center justify-center shadow-md shadow-teal-600/30 mb-1">
-            <Activity className="w-7 h-7 stroke-[2.5]" />
-          </div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            Welcome to Movra
-          </h1>
-          <p className="text-xs text-slate-500 max-w-xs mx-auto">
-            AI-powered home physiotherapy rehabilitation & clinical practice.
-          </p>
-        </div>
-
+    <AuthLayout
+      title="Welcome back"
+      subtitle="Sign in to continue your recovery journey and clinical care."
+    >
+      <div className="space-y-5">
         {/* Error Alert */}
         {error && (
-          <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl text-xs flex items-start gap-2">
+          <div
+            role="alert"
+            className="p-3.5 bg-rose-50/90 border border-rose-200/90 text-rose-900 rounded-xl text-xs flex items-start gap-2.5 animate-in fade-in duration-200"
+          >
             <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 mt-0.5" />
-            <span>{error}</span>
+            <span className="leading-relaxed font-medium">{error}</span>
           </div>
         )}
 
         {/* Login Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+          {/* Email Input */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-slate-700">Email Address</label>
+            <label 
+              htmlFor="login-email" 
+              className="block text-xs font-bold text-slate-700 tracking-wide"
+            >
+              Email Address
+            </label>
             <div className="relative">
               <input
+                id="login-email"
+                name="email"
                 type="email"
+                autoComplete="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (error) setError(null);
+                }}
                 placeholder="name@example.com"
                 required
-                className="w-full py-2.5 pl-10 pr-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                disabled={isLoading}
+                aria-required="true"
+                className="w-full py-2.5 pl-10 pr-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0EA5A0]/20 focus:border-[#0EA5A0] transition-all disabled:opacity-60"
               />
-              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
             </div>
           </div>
 
+          {/* Password Input */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-slate-700">Password</label>
+              <label 
+                htmlFor="login-password" 
+                className="block text-xs font-bold text-slate-700 tracking-wide"
+              >
+                Password
+              </label>
               <button
                 type="button"
                 onClick={() => onNavigate('forgot-password')}
-                className="text-[11px] font-semibold text-teal-600 hover:text-teal-700"
+                className="text-xs font-semibold text-[#0EA5A0] hover:text-teal-700 transition-colors focus:outline-none focus:underline"
               >
                 Forgot password?
               </button>
             </div>
             <div className="relative">
               <input
-                type="password"
+                id="login-password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (error) setError(null);
+                }}
                 placeholder="••••••••"
                 required
-                className="w-full py-2.5 pl-10 pr-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500"
+                disabled={isLoading}
+                aria-required="true"
+                className="w-full py-2.5 pl-10 pr-10 bg-slate-50/70 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#0EA5A0]/20 focus:border-[#0EA5A0] transition-all disabled:opacity-60"
               />
-              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="p-1 absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+              </button>
             </div>
           </div>
 
+          {/* Submit Button */}
           <button
             type="submit"
-            disabled={isLoading}
-            className="w-full py-3 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm shadow-teal-600/20 transition-all active:scale-98"
+            disabled={isLoading || !email || !password}
+            className="w-full mt-2 py-3 px-4 bg-[#07111F] hover:bg-[#0D1C30] disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 shadow-sm hover:shadow transition-all active:scale-[0.99] cursor-pointer"
           >
             {isLoading ? (
-              <span>Signing in...</span>
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-teal-400" />
+                <span>Signing in...</span>
+              </>
             ) : (
               <>
-                <span>Sign In to Movra</span>
-                <ArrowRight className="w-4 h-4" />
+                <span>Sign in to MOVRA</span>
+                <ArrowRight className="w-4 h-4 text-[#0EA5A0]" />
               </>
             )}
           </button>
         </form>
 
-        {/* Quick Demo Credentials Bar for Testing */}
-        <div className="pt-2 border-t border-slate-100 space-y-2">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block text-center">
-            Quick Fill Demo Accounts:
-          </span>
-          <div className="grid grid-cols-3 gap-1.5">
-            <button
-              type="button"
-              onClick={() => handleQuickFill('patient@movra.ai', 'Patient@12345')}
-              className="py-1.5 px-2 bg-teal-50 hover:bg-teal-100 text-teal-800 text-[10px] font-bold rounded-lg border border-teal-200 flex flex-col items-center gap-0.5 transition-colors"
-            >
-              <UserCheck className="w-3 h-3 text-teal-600" />
-              <span>Patient</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleQuickFill('physio@movra.ai', 'Physio@12345')}
-              className="py-1.5 px-2 bg-sky-50 hover:bg-sky-100 text-sky-800 text-[10px] font-bold rounded-lg border border-sky-200 flex flex-col items-center gap-0.5 transition-colors"
-            >
-              <Stethoscope className="w-3 h-3 text-sky-600" />
-              <span>Physio</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleQuickFill('admin@movra.ai', 'Admin@12345')}
-              className="py-1.5 px-2 bg-purple-50 hover:bg-purple-100 text-purple-800 text-[10px] font-bold rounded-lg border border-purple-200 flex flex-col items-center gap-0.5 transition-colors"
-            >
-              <ShieldAlert className="w-3 h-3 text-purple-600" />
-              <span>Admin</span>
-            </button>
+        {/* Visual Divider */}
+        <div className="relative my-4">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-slate-200" />
+          </div>
+          <div className="relative flex justify-center text-[11px] uppercase tracking-wider font-bold">
+            <span className="bg-white px-3 text-slate-400">or</span>
           </div>
         </div>
 
-        {/* Footer Link to Signup */}
-        <div className="pt-1 text-center text-xs text-slate-500">
-          <span>Don't have an account? </span>
-          <button
-            type="button"
-            onClick={() => onNavigate('signup')}
-            className="font-bold text-teal-600 hover:text-teal-700"
-          >
-            Create an Account
-          </button>
+        {/* Secondary Action: Create Account */}
+        <div className="text-center">
+          <p className="text-xs text-slate-600">
+            <span>New to MOVRA? </span>
+            <button
+              type="button"
+              onClick={() => onNavigate('signup')}
+              className="font-bold text-[#0EA5A0] hover:text-teal-700 transition-colors focus:outline-none underline-offset-2 hover:underline"
+            >
+              Create an account
+            </button>
+          </p>
         </div>
+
+        {/* ========================================================= */}
+        {/* DEVELOPMENT / DEMO CONTROLS                              */}
+        {/* Rendered ONLY when VITE_ENABLE_DEMO_AUTH === 'true'.       */}
+        {/* Discretely collapsible and NEVER exposes admin accounts. */}
+        {/* ========================================================= */}
+        {isDemoModeEnabled && (
+          <div className="pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setShowDemoDrawer(!showDemoDrawer)}
+              className="w-full flex items-center justify-between text-[11px] font-medium text-slate-400 hover:text-slate-600 transition-colors py-1 cursor-pointer focus:outline-none"
+            >
+              <span className="flex items-center gap-1.5">
+                <Code2 className="w-3.5 h-3.5 text-slate-400" />
+                <span>Developer Demo Helper</span>
+              </span>
+              <span className="flex items-center gap-1 text-[10px] text-[#0EA5A0] font-semibold">
+                {showDemoDrawer ? 'Hide' : 'Show Accounts'}
+                {showDemoDrawer ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </span>
+            </button>
+
+            {showDemoDrawer && (
+              <div className="mt-2.5 p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 animate-in fade-in duration-150">
+                <p className="text-[10px] text-slate-500 leading-normal">
+                  Development feature active (<code className="text-[#0EA5A0]">VITE_ENABLE_DEMO_AUTH</code>). Select a role to test:
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleQuickFill('patient@movra.ai', 'Patient@12345')}
+                    className="p-2 rounded-lg bg-white border border-slate-200 hover:border-[#0EA5A0] hover:shadow-2xs text-left transition-all group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-1.5 text-slate-900 text-[11px] font-bold group-hover:text-[#0EA5A0]">
+                      <UserCheck className="w-3.5 h-3.5 text-[#0EA5A0]" />
+                      <span>Patient Account</span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 truncate mt-0.5">patient@movra.ai</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleQuickFill('physio@movra.ai', 'Physio@12345')}
+                    className="p-2 rounded-lg bg-white border border-slate-200 hover:border-sky-500 hover:shadow-2xs text-left transition-all group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-1.5 text-slate-900 text-[11px] font-bold group-hover:text-sky-600">
+                      <Stethoscope className="w-3.5 h-3.5 text-sky-600" />
+                      <span>Physio Account</span>
+                    </div>
+                    <div className="text-[10px] text-slate-400 truncate mt-0.5">physio@movra.ai</div>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
-    </div>
+    </AuthLayout>
   );
 };
 

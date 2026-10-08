@@ -22,6 +22,8 @@ export const PublicLayout: React.FC = () => {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const isAuthPage = ['/login', '/signup', '/forgot-password'].includes(location.pathname);
+
   const getDashboardPath = () => {
     if (role === 'admin') return '/admin-dashboard';
     if (role === 'physiotherapist') return '/physio-dashboard';
@@ -49,32 +51,34 @@ export const PublicLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-['Plus_Jakarta_Sans',sans-serif] text-slate-900 selection:bg-teal-100 selection:text-teal-900">
-      {/* Top Clinical Announcement Bar */}
-      <div className="bg-slate-950 text-slate-300 text-[11px] font-medium py-1.5 px-4 text-center border-b border-slate-900">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2 mx-auto sm:mx-0">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-            <span>Now providing certified home physiotherapy visits across Patna (Kankarbagh, Boring Rd, Rajendra Nagar &amp; Bailey Rd).</span>
-          </div>
-          <div className="hidden sm:flex items-center gap-4 text-slate-400">
-            <a 
-              href={`tel:${MOVRA_CONFIG.brand.supportPhone.replace(/\s+/g, '')}`} 
-              className="hover:text-white transition-colors flex items-center gap-1.5"
-            >
-              <Phone className="w-3 h-3 text-teal-400" />
-              <span>Helpline: {MOVRA_CONFIG.brand.supportPhone}</span>
-            </a>
-            <span aria-hidden="true" className="text-slate-700">|</span>
-            <button
-              onClick={openWhatsApp}
-              className="hover:text-emerald-400 transition-colors flex items-center gap-1.5 text-slate-300 cursor-pointer"
-            >
-              <MessageCircle className="w-3 h-3 text-emerald-400" />
-              <span>WhatsApp Booking</span>
-            </button>
+      {/* Top Clinical Announcement Bar (Hidden on Auth Screens) */}
+      {!isAuthPage && (
+        <div className="bg-slate-950 text-slate-300 text-[11px] font-medium py-1.5 px-4 text-center border-b border-slate-900">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-2 mx-auto sm:mx-0">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <span>Now providing certified home physiotherapy visits across Patna (Kankarbagh, Boring Rd, Rajendra Nagar &amp; Bailey Rd).</span>
+            </div>
+            <div className="hidden sm:flex items-center gap-4 text-slate-400">
+              <a 
+                href={`tel:${MOVRA_CONFIG.brand.supportPhone.replace(/\s+/g, '')}`} 
+                className="hover:text-white transition-colors flex items-center gap-1.5"
+              >
+                <Phone className="w-3 h-3 text-teal-400" />
+                <span>Helpline: {MOVRA_CONFIG.brand.supportPhone}</span>
+              </a>
+              <span aria-hidden="true" className="text-slate-700">|</span>
+              <button
+                onClick={openWhatsApp}
+                className="hover:text-emerald-400 transition-colors flex items-center gap-1.5 text-slate-300 cursor-pointer"
+              >
+                <MessageCircle className="w-3 h-3 text-emerald-400" />
+                <span>WhatsApp Booking</span>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Main Healthcare Navigation Bar */}
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-2xs transition-all">
@@ -97,106 +101,127 @@ export const PublicLayout: React.FC = () => {
             </div>
           </Link>
 
-          {/* Desktop Navigation Links */}
-          <nav className="hidden lg:flex items-center gap-8">
-            <Link 
-              to="/"
-              className="text-sm font-semibold text-slate-700 hover:text-teal-800 transition-colors"
-            >
-              Home
-            </Link>
-            <button 
-              onClick={() => handleNavClick('services')}
-              className="text-sm font-semibold text-slate-600 hover:text-teal-800 transition-colors cursor-pointer"
-            >
-              Services
-            </button>
-            <button 
-              onClick={() => handleNavClick('how-it-works')}
-              className="text-sm font-semibold text-slate-600 hover:text-teal-800 transition-colors cursor-pointer"
-            >
-              How It Works
-            </button>
-            <button 
-              onClick={() => handleNavClick('movra-intelligence')}
-              className="text-sm font-semibold text-slate-600 hover:text-teal-800 transition-colors cursor-pointer"
-            >
-              MOVRA Intelligence
-            </button>
-            <button 
-              onClick={() => handleNavClick('team')}
-              className="text-sm font-semibold text-slate-600 hover:text-teal-800 transition-colors cursor-pointer"
-            >
-              Physiotherapists
-            </button>
-            <button 
-              onClick={() => handleNavClick('pricing')}
-              className="text-sm font-semibold text-slate-600 hover:text-teal-800 transition-colors cursor-pointer"
-            >
-              Pricing
-            </button>
-          </nav>
-
-          {/* Right Action Controls */}
-          <div className="hidden sm:flex items-center gap-3">
-            {/* WhatsApp Quick Action */}
-            <button
-              onClick={openWhatsApp}
-              className="p-2.5 rounded-xl text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-200/80 transition-colors flex items-center gap-1.5 text-xs font-semibold"
-              title="Chat with Care Coordinator on WhatsApp"
-            >
-              <MessageCircle className="w-4 h-4 text-emerald-600" />
-              <span className="hidden xl:inline">WhatsApp</span>
-            </button>
-
-            {isAuthenticated ? (
-              <div className="flex items-center gap-2">
-                <Link
-                  to={getDashboardPath()}
-                  className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 text-xs font-bold transition-colors flex items-center gap-2"
+          {isAuthPage ? (
+            /* Streamlined Right Controls on Auth Pages */
+            <div className="flex items-center gap-3 sm:gap-4">
+              <a 
+                href={`tel:${MOVRA_CONFIG.brand.supportPhone.replace(/\s+/g, '')}`} 
+                className="hidden md:flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 transition-colors"
+              >
+                <Phone className="w-3.5 h-3.5 text-teal-600" />
+                <span>Need assistance? {MOVRA_CONFIG.brand.supportPhone}</span>
+              </a>
+              <Link
+                to="/"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-700 hover:text-slate-950 hover:bg-slate-100 rounded-xl transition-colors"
+              >
+                <span>← Back to Website</span>
+              </Link>
+            </div>
+          ) : (
+            <>
+              {/* Desktop Navigation Links */}
+              <nav className="hidden lg:flex items-center gap-8">
+                <Link 
+                  to="/"
+                  className="text-sm font-semibold text-slate-700 hover:text-teal-800 transition-colors"
                 >
-                  <User className="w-3.5 h-3.5 text-teal-700" />
-                  <span>{user?.full_name?.split(' ')[0] || 'User'} Dashboard</span>
+                  Home
                 </Link>
-                <button
-                  onClick={logout}
-                  className="p-2 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors"
-                  title="Sign Out"
+                <button 
+                  onClick={() => handleNavClick('services')}
+                  className="text-sm font-semibold text-slate-600 hover:text-teal-800 transition-colors cursor-pointer"
                 >
-                  <LogOut className="w-4 h-4" />
+                  Services
                 </button>
+                <button 
+                  onClick={() => handleNavClick('how-it-works')}
+                  className="text-sm font-semibold text-slate-600 hover:text-teal-800 transition-colors cursor-pointer"
+                >
+                  How It Works
+                </button>
+                <button 
+                  onClick={() => handleNavClick('movra-intelligence')}
+                  className="text-sm font-semibold text-slate-600 hover:text-teal-800 transition-colors cursor-pointer"
+                >
+                  MOVRA Intelligence
+                </button>
+                <button 
+                  onClick={() => handleNavClick('team')}
+                  className="text-sm font-semibold text-slate-600 hover:text-teal-800 transition-colors cursor-pointer"
+                >
+                  Physiotherapists
+                </button>
+                <button 
+                  onClick={() => handleNavClick('pricing')}
+                  className="text-sm font-semibold text-slate-600 hover:text-teal-800 transition-colors cursor-pointer"
+                >
+                  Pricing
+                </button>
+              </nav>
+
+              {/* Right Action Controls */}
+              <div className="hidden sm:flex items-center gap-3">
+                {/* WhatsApp Quick Action */}
+                <button
+                  onClick={openWhatsApp}
+                  className="p-2.5 rounded-xl text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-200/80 transition-colors flex items-center gap-1.5 text-xs font-semibold"
+                  title="Chat with Care Coordinator on WhatsApp"
+                >
+                  <MessageCircle className="w-4 h-4 text-emerald-600" />
+                  <span className="hidden xl:inline">WhatsApp</span>
+                </button>
+
+                {isAuthenticated ? (
+                  <div className="flex items-center gap-2">
+                    <Link
+                      to={getDashboardPath()}
+                      className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 text-xs font-bold transition-colors flex items-center gap-2"
+                    >
+                      <User className="w-3.5 h-3.5 text-teal-700" />
+                      <span>{user?.full_name?.split(' ')[0] || 'User'} Dashboard</span>
+                    </Link>
+                    <button
+                      onClick={logout}
+                      className="p-2 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-colors"
+                      title="Sign Out"
+                    >
+                      <LogOut className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <Link
+                      to="/login"
+                      className="px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:text-teal-900 hover:bg-slate-100 rounded-xl transition-colors"
+                    >
+                      Sign In
+                    </Link>
+                    <button
+                      onClick={() => handleNavClick('booking-section')}
+                      className="px-5 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white text-xs font-bold shadow-xs hover:shadow-md transition-all flex items-center gap-2 cursor-pointer"
+                    >
+                      <Calendar className="w-3.5 h-3.5 text-teal-400" />
+                      <span>Book Home Visit</span>
+                    </button>
+                  </>
+                )}
               </div>
-            ) : (
-              <>
-                <Link
-                  to="/login"
-                  className="px-3.5 py-2.5 text-xs font-bold text-slate-700 hover:text-teal-900 hover:bg-slate-100 rounded-xl transition-colors"
-                >
-                  Sign In
-                </Link>
-                <button
-                  onClick={() => handleNavClick('booking-section')}
-                  className="px-5 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white text-xs font-bold shadow-xs hover:shadow-md transition-all flex items-center gap-2 cursor-pointer"
-                >
-                  <Calendar className="w-3.5 h-3.5 text-teal-400" />
-                  <span>Book Home Visit</span>
-                </button>
-              </>
-            )}
-          </div>
 
-          {/* Mobile Menu Toggle Button */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden p-2.5 rounded-xl text-slate-700 hover:text-slate-950 hover:bg-slate-100 transition-colors"
-            aria-label="Toggle navigation menu"
-          >
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
+              {/* Mobile Menu Toggle Button */}
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="lg:hidden p-2.5 rounded-xl text-slate-700 hover:text-slate-950 hover:bg-slate-100 transition-colors"
+                aria-label="Toggle navigation menu"
+              >
+                {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
+            </>
+          )}
         </div>
 
-        {/* Mobile Navigation Dropdown Drawer */}
-        {mobileMenuOpen && (
+        {/* Mobile Navigation Dropdown Drawer (Not on auth pages) */}
+        {!isAuthPage && mobileMenuOpen && (
           <div className="lg:hidden bg-white border-b border-slate-200 px-4 pt-3 pb-6 space-y-4 animate-in slide-in-from-top-2 duration-150">
             <div className="flex flex-col space-y-1">
               <button
@@ -296,23 +321,25 @@ export const PublicLayout: React.FC = () => {
         <Outlet />
       </main>
 
-      {/* Mobile Sticky Quick-Action Bar */}
-      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-3 flex items-center gap-2.5 shadow-lg">
-        <button
-          onClick={openWhatsApp}
-          className="flex-1 py-3 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
-        >
-          <MessageCircle className="w-4 h-4 text-emerald-600" />
-          <span>WhatsApp</span>
-        </button>
-        <button
-          onClick={() => handleNavClick('booking-section')}
-          className="flex-[2] py-3 px-4 rounded-xl bg-slate-950 hover:bg-slate-900 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer"
-        >
-          <Calendar className="w-4 h-4 text-teal-400" />
-          <span>Book Home Visit</span>
-        </button>
-      </div>
+      {/* Mobile Sticky Quick-Action Bar (Hidden on Auth Screens) */}
+      {!isAuthPage && (
+        <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-3 flex items-center gap-2.5 shadow-lg">
+          <button
+            onClick={openWhatsApp}
+            className="flex-1 py-3 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          >
+            <MessageCircle className="w-4 h-4 text-emerald-600" />
+            <span>WhatsApp</span>
+          </button>
+          <button
+            onClick={() => handleNavClick('booking-section')}
+            className="flex-[2] py-3 px-4 rounded-xl bg-slate-950 hover:bg-slate-900 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition-colors cursor-pointer"
+          >
+            <Calendar className="w-4 h-4 text-teal-400" />
+            <span>Book Home Visit</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };

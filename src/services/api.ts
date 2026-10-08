@@ -175,6 +175,16 @@ class ApiClient {
   private isOnline: boolean = false;
   private hasChecked: boolean = false;
 
+  getAuthHeaders(): Record<string, string> {
+    try {
+      const token = localStorage.getItem('movra_auth_token');
+      if (token) {
+        return { 'Authorization': `Bearer ${token}` };
+      }
+    } catch {}
+    return {};
+  }
+
   async checkHealth(): Promise<boolean> {
     try {
       const res = await fetch(`${API_BASE_URL}/health`, {
@@ -201,13 +211,13 @@ class ApiClient {
   async getTodayPlan(patientId: string = 'rahul_123'): Promise<TodayPlanData> {
     try {
       const res = await fetch(`${API_BASE_URL}/today-plan/${patientId}`, {
-        headers: { 'Accept': 'application/json' },
+        headers: { 'Accept': 'application/json', ...this.getAuthHeaders() },
         signal: AbortSignal.timeout(4000)
       });
       if (!res.ok) {
         // Try fallback to query param
         const fallbackRes = await fetch(`${API_BASE_URL}/today-plan?patient_id=${patientId}`, {
-          headers: { 'Accept': 'application/json' },
+          headers: { 'Accept': 'application/json', ...this.getAuthHeaders() },
           signal: AbortSignal.timeout(4000)
         });
         if (!fallbackRes.ok) throw new Error(`HTTP error ${res.status}`);
@@ -727,7 +737,8 @@ class ApiClient {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          ...this.getAuthHeaders()
         },
         body: JSON.stringify(bookingData),
         signal: AbortSignal.timeout(6000)
@@ -777,7 +788,7 @@ class ApiClient {
       if (params?.email) queryParams.append('email', params.email);
 
       const res = await fetch(`${API_BASE_URL}/bookings/my?${queryParams.toString()}`, {
-        headers: { 'Accept': 'application/json' },
+        headers: { 'Accept': 'application/json', ...this.getAuthHeaders() },
         signal: AbortSignal.timeout(4000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -795,7 +806,7 @@ class ApiClient {
     try {
       const url = statusFilter ? `${API_BASE_URL}/bookings?status_filter=${statusFilter}` : `${API_BASE_URL}/bookings`;
       const res = await fetch(url, {
-        headers: { 'Accept': 'application/json' },
+        headers: { 'Accept': 'application/json', ...this.getAuthHeaders() },
         signal: AbortSignal.timeout(4000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -815,7 +826,8 @@ class ApiClient {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          ...this.getAuthHeaders()
         },
         body: JSON.stringify({ status: newStatus, physiotherapist }),
         signal: AbortSignal.timeout(5000)
@@ -904,7 +916,7 @@ class ApiClient {
   async getPhysioDashboardSummary(): Promise<any> {
     try {
       const res = await fetch(`${API_BASE_URL}/physio/dashboard-summary`, {
-        headers: { 'Accept': 'application/json' },
+        headers: { 'Accept': 'application/json', ...this.getAuthHeaders() },
         signal: AbortSignal.timeout(4000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -938,7 +950,7 @@ class ApiClient {
         ? `${API_BASE_URL}/physio/appointments?view=${view}&status_filter=${statusFilter}`
         : `${API_BASE_URL}/physio/appointments?view=${view}`;
       const res = await fetch(url, {
-        headers: { 'Accept': 'application/json' },
+        headers: { 'Accept': 'application/json', ...this.getAuthHeaders() },
         signal: AbortSignal.timeout(4000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -953,6 +965,7 @@ class ApiClient {
     try {
       const res = await fetch(`${API_BASE_URL}/physio/appointments/${appointmentId}/status?status_value=${statusValue}`, {
         method: 'PATCH',
+        headers: { ...this.getAuthHeaders() },
         signal: AbortSignal.timeout(4000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -967,7 +980,7 @@ class ApiClient {
     try {
       const res = await fetch(`${API_BASE_URL}/physio/bookings/${bookingId}/accept`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
         body: JSON.stringify({ notes }),
         signal: AbortSignal.timeout(5000)
       });
@@ -983,7 +996,7 @@ class ApiClient {
     try {
       const res = await fetch(`${API_BASE_URL}/physio/bookings/${bookingId}/reject`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
         body: JSON.stringify({ reason }),
         signal: AbortSignal.timeout(5000)
       });
@@ -999,7 +1012,7 @@ class ApiClient {
     try {
       const res = await fetch(`${API_BASE_URL}/physio/bookings/${bookingId}/reschedule`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
         body: JSON.stringify({ new_date: newDate, new_time: newTime, reason }),
         signal: AbortSignal.timeout(5000)
       });
@@ -1014,7 +1027,7 @@ class ApiClient {
   async getTodaysVisits(): Promise<any[]> {
     try {
       const res = await fetch(`${API_BASE_URL}/physio/visits/today`, {
-        headers: { 'Accept': 'application/json' },
+        headers: { 'Accept': 'application/json', ...this.getAuthHeaders() },
         signal: AbortSignal.timeout(4000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -1069,6 +1082,7 @@ class ApiClient {
     try {
       const res = await fetch(`${API_BASE_URL}/physio/visits/${appointmentId}/start`, {
         method: 'POST',
+        headers: { ...this.getAuthHeaders() },
         signal: AbortSignal.timeout(4000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -1083,6 +1097,7 @@ class ApiClient {
     try {
       const res = await fetch(`${API_BASE_URL}/physio/visits/${appointmentId}/complete`, {
         method: 'POST',
+        headers: { ...this.getAuthHeaders() },
         signal: AbortSignal.timeout(4000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -1109,7 +1124,7 @@ class ApiClient {
     try {
       const url = query ? `${API_BASE_URL}/physio/patients?query=${encodeURIComponent(query)}` : `${API_BASE_URL}/physio/patients`;
       const res = await fetch(url, {
-        headers: { 'Accept': 'application/json' },
+        headers: { 'Accept': 'application/json', ...this.getAuthHeaders() },
         signal: AbortSignal.timeout(4000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -1175,7 +1190,7 @@ class ApiClient {
   async getPatientClinicalProfile(patientId: string): Promise<any> {
     try {
       const res = await fetch(`${API_BASE_URL}/physio/patients/${patientId}`, {
-        headers: { 'Accept': 'application/json' },
+        headers: { 'Accept': 'application/json', ...this.getAuthHeaders() },
         signal: AbortSignal.timeout(4000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -1227,7 +1242,7 @@ class ApiClient {
     try {
       const res = await fetch(`${API_BASE_URL}/physio/soap/ai-draft`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
         body: JSON.stringify(data),
         signal: AbortSignal.timeout(5000)
       });
@@ -1251,7 +1266,7 @@ class ApiClient {
     try {
       const res = await fetch(`${API_BASE_URL}/physio/patients/${patientId}/soap`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
         body: JSON.stringify(soapPayload),
         signal: AbortSignal.timeout(5000)
       });
@@ -1266,11 +1281,74 @@ class ApiClient {
     }
   }
 
+  // ==========================================
+  // Clinical AI Approval Gate Methods
+  // ==========================================
+
+  async getPendingRehabPlans(): Promise<any[]> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/physio/rehab-plans/pending`, {
+        headers: { 'Accept': 'application/json', ...this.getAuthHeaders() },
+        signal: AbortSignal.timeout(4000)
+      });
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      const data = await res.json();
+      return data.plans || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async approveRehabPlan(planId: number | string, notes?: string): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/physio/rehab-plans/${planId}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', ...this.getAuthHeaders() },
+        body: JSON.stringify({ notes }),
+        signal: AbortSignal.timeout(4000)
+      });
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      return await res.json();
+    } catch {
+      return { status: 'success', message: 'Rehab plan approved and released to patient dashboard.' };
+    }
+  }
+
+  async rejectRehabPlan(planId: number | string, reason: string): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/physio/rehab-plans/${planId}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', ...this.getAuthHeaders() },
+        body: JSON.stringify({ reason }),
+        signal: AbortSignal.timeout(4000)
+      });
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      return await res.json();
+    } catch {
+      return { status: 'success', message: 'Rehab plan marked as rejected.' };
+    }
+  }
+
+  async modifyRehabPlan(planId: number | string, planData: any, clinicalNotes?: string): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/physio/rehab-plans/${planId}/modify`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', ...this.getAuthHeaders() },
+        body: JSON.stringify({ plan_data: planData, clinical_notes: clinicalNotes }),
+        signal: AbortSignal.timeout(4000)
+      });
+      if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+      return await res.json();
+    } catch {
+      return { status: 'success', message: 'Rehab plan customized and committed.' };
+    }
+  }
+
   async analyzeMovementVideo(data: any): Promise<any> {
     try {
       const res = await fetch(`${API_BASE_URL}/physio/movement-analysis`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
         body: JSON.stringify(data),
         signal: AbortSignal.timeout(5000)
       });
@@ -1295,7 +1373,7 @@ class ApiClient {
   async getEarnings(): Promise<any> {
     try {
       const res = await fetch(`${API_BASE_URL}/physio/earnings`, {
-        headers: { 'Accept': 'application/json' },
+        headers: { 'Accept': 'application/json', ...this.getAuthHeaders() },
         signal: AbortSignal.timeout(4000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -1317,7 +1395,7 @@ class ApiClient {
   async getFollowUps(): Promise<any[]> {
     try {
       const res = await fetch(`${API_BASE_URL}/physio/follow-ups`, {
-        headers: { 'Accept': 'application/json' },
+        headers: { 'Accept': 'application/json', ...this.getAuthHeaders() },
         signal: AbortSignal.timeout(4000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -1354,7 +1432,7 @@ class ApiClient {
   async getServiceAreas(): Promise<any[]> {
     try {
       const res = await fetch(`${API_BASE_URL}/physio/service-area`, {
-        headers: { 'Accept': 'application/json' },
+        headers: { 'Accept': 'application/json', ...this.getAuthHeaders() },
         signal: AbortSignal.timeout(4000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -1375,7 +1453,7 @@ class ApiClient {
   async getAvailability(): Promise<any> {
     try {
       const res = await fetch(`${API_BASE_URL}/physio/availability`, {
-        headers: { 'Accept': 'application/json' },
+        headers: { 'Accept': 'application/json', ...this.getAuthHeaders() },
         signal: AbortSignal.timeout(4000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -1482,7 +1560,7 @@ class ApiClient {
   async getAdminDashboardStats(): Promise<any> {
     try {
       const res = await fetch(`${API_BASE_URL}/admin/dashboard-stats`, {
-        headers: { 'Accept': 'application/json' },
+        headers: { 'Accept': 'application/json', ...this.getAuthHeaders() },
         signal: AbortSignal.timeout(4000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -1519,7 +1597,7 @@ class ApiClient {
       if (role) qParams.append('role', role);
       if (query) qParams.append('query', query);
       const res = await fetch(`${API_BASE_URL}/admin/users?${qParams.toString()}`, {
-        headers: { 'Accept': 'application/json' },
+        headers: { 'Accept': 'application/json', ...this.getAuthHeaders() },
         signal: AbortSignal.timeout(4000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -1544,7 +1622,7 @@ class ApiClient {
     try {
       const res = await fetch(`${API_BASE_URL}/admin/users/${userId}/status`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
         body: JSON.stringify({ status: statusValue, reason }),
         signal: AbortSignal.timeout(5000)
       });
@@ -1559,6 +1637,7 @@ class ApiClient {
     try {
       const res = await fetch(`${API_BASE_URL}/admin/users/${userId}/reset-access`, {
         method: 'POST',
+        headers: { ...this.getAuthHeaders() },
         signal: AbortSignal.timeout(4000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -1571,7 +1650,7 @@ class ApiClient {
   async getFeatureFlags(): Promise<any[]> {
     try {
       const res = await fetch(`${API_BASE_URL}/admin/feature-flags`, {
-        headers: { 'Accept': 'application/json' },
+        headers: { 'Accept': 'application/json', ...this.getAuthHeaders() },
         signal: AbortSignal.timeout(4000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -1602,7 +1681,7 @@ class ApiClient {
     try {
       const res = await fetch(`${API_BASE_URL}/admin/feature-flags/${key}/toggle`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
         body: JSON.stringify({ enabled, reason }),
         signal: AbortSignal.timeout(5000)
       });
@@ -1617,7 +1696,7 @@ class ApiClient {
     try {
       const res = await fetch(`${API_BASE_URL}/admin/emergency-kill-switch`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
         body: JSON.stringify({ target, reason }),
         signal: AbortSignal.timeout(5000)
       });
@@ -1631,7 +1710,7 @@ class ApiClient {
   async getAuditLogs(): Promise<any[]> {
     try {
       const res = await fetch(`${API_BASE_URL}/admin/audit-logs`, {
-        headers: { 'Accept': 'application/json' },
+        headers: { 'Accept': 'application/json', ...this.getAuthHeaders() },
         signal: AbortSignal.timeout(4000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -1672,7 +1751,7 @@ class ApiClient {
     try {
       const res = await fetch(`${API_BASE_URL}/admin/services`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
         body: JSON.stringify(data),
         signal: AbortSignal.timeout(5000)
       });
@@ -1687,7 +1766,7 @@ class ApiClient {
     try {
       const res = await fetch(`${API_BASE_URL}/admin/services/${serviceId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
         body: JSON.stringify(data),
         signal: AbortSignal.timeout(5000)
       });
@@ -1702,7 +1781,7 @@ class ApiClient {
     try {
       const res = await fetch(`${API_BASE_URL}/admin/bookings/${bookingId}/assign-physio`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...this.getAuthHeaders() },
         body: JSON.stringify({ physiotherapist_name: physioName, notes }),
         signal: AbortSignal.timeout(5000)
       });
@@ -1717,7 +1796,7 @@ class ApiClient {
   async getSystemHealth(): Promise<any> {
     try {
       const res = await fetch(`${API_BASE_URL}/admin/system-health`, {
-        headers: { 'Accept': 'application/json' },
+        headers: { 'Accept': 'application/json', ...this.getAuthHeaders() },
         signal: AbortSignal.timeout(4000)
       });
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);

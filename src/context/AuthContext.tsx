@@ -157,7 +157,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    const currentToken = localStorage.getItem(TOKEN_KEY);
+    if (currentToken) {
+      try {
+        await fetch(`${API_BASE_URL}/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${currentToken}`,
+            'Accept': 'application/json'
+          }
+        });
+      } catch (err) {
+        // Silently continue with local cleanup
+      }
+    }
     setToken(null);
     setUser(null);
     localStorage.removeItem(TOKEN_KEY);

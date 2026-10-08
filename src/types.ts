@@ -19,7 +19,7 @@ export interface AuthContextType {
   signup: (data: { email: string; password: string; full_name: string; role: 'patient' | 'physiotherapist' }) => Promise<{ success: boolean; error?: string; role?: UserRole }>;
   forgotPassword: (email: string) => Promise<{ success: boolean; message?: string; error?: string; reset_token?: string }>;
   resetPassword: (token: string, newPassword: string) => Promise<{ success: boolean; message?: string; error?: string }>;
-  logout: () => void;
+  logout: () => void | Promise<void>;
 }
 
 export interface Exercise {

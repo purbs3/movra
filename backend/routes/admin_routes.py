@@ -30,6 +30,7 @@ from models import (
     PlatformService, 
     PlatformServiceArea
 )
+from auth import require_admin
 
 router = APIRouter(prefix="/api/admin", tags=["Admin Central Control Center"])
 
@@ -127,9 +128,13 @@ HOMEPAGE_CONTENT = {
 
 
 @router.get("/dashboard-stats")
-def get_admin_dashboard_stats(db: Session = Depends(get_db)):
+def get_admin_dashboard_stats(
+    current_admin: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
     """
     Returns real platform operational metrics, health, and growth trajectories.
+    Requires Admin privileges.
     """
     ensure_feature_flags(db)
 
@@ -200,10 +205,12 @@ def get_admin_dashboard_stats(db: Session = Depends(get_db)):
 def get_platform_users(
     role: Optional[str] = Query(None, example="patient"),
     query: Optional[str] = None,
+    current_admin: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     """
     Returns registered users filtered by role with account status.
+    Requires Admin privileges.
     """
     q = db.query(User)
     if role:
@@ -322,18 +329,20 @@ def get_platform_users(
 def update_user_status(
     user_id: int,
     payload: UserStatusPayload,
+    current_admin: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     """
     Activates, deactivates, or suspends a user.
     Preserves all clinical records when deactivating a patient!
+    Requires Admin privileges.
     """
     user = db.query(User).filter(User.id == user_id).first()
     new_status = payload.status.upper()
 
-    # Log action to Audit Trail
+    # Log action to Audit Trail with authenticated admin email
     log = AuditLog(
-        actor_email=payload.actor_email or "admin@movra.ai",
+        actor_email=current_admin.email,
         action=f"USER_STATUS_{new_status}",
         target_type="User",
         target_id=str(user_id),
@@ -353,12 +362,17 @@ def update_user_status(
 
 
 @router.post("/users/{user_id}/reset-access")
-def reset_user_access(user_id: int, db: Session = Depends(get_db)):
+def reset_user_access(
+    user_id: int,
+    current_admin: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
     """
     Resets access token and issues a secure temporary recovery link.
+    Requires Admin privileges.
     """
     log = AuditLog(
-        actor_email="admin@movra.ai",
+        actor_email=current_admin.email,
         action="USER_ACCESS_RESET",
         target_type="User",
         target_id=str(user_id),
@@ -377,9 +391,13 @@ def reset_user_access(user_id: int, db: Session = Depends(get_db)):
 # FEATURE FLAGS & MASTER SWITCHBOARD
 # ========================================================
 @router.get("/feature-flags")
-def get_feature_flags(db: Session = Depends(get_db)):
+def get_feature_flags(
+    current_admin: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
     """
     Returns all platform feature flags and module master switches.
+    Requires Admin privileges.
     """
     ensure_feature_flags(db)
     flags = db.query(FeatureFlag).all()
@@ -393,11 +411,12 @@ def get_feature_flags(db: Session = Depends(get_db)):
 def toggle_feature_flag(
     key: str,
     payload: ToggleFeaturePayload,
+    current_admin: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     """
     Toggles any feature flag ON/OFF.
-    Enforced server-side with audit logging.
+    Enforced server-side with audit logging. Requires Admin privileges.
     """
     ensure_feature_flags(db)
     flag = db.query(FeatureFlag).filter(FeatureFlag.key == key).first()
@@ -406,12 +425,12 @@ def toggle_feature_flag(
         db.add(flag)
 
     flag.enabled = payload.enabled
-    flag.updated_by = payload.actor_email or "admin@movra.ai"
+    flag.updated_by = current_admin.email
     flag.updated_at = datetime.utcnow()
 
     # Create Audit Log Entry
     audit = AuditLog(
-        actor_email=payload.actor_email or "admin@movra.ai",
+        actor_email=current_admin.email,
         action=f"FEATURE_{'ENABLED' if payload.enabled else 'DISABLED'}",
         target_type="FeatureFlag",
         target_id=key,
@@ -431,10 +450,12 @@ def toggle_feature_flag(
 @router.post("/emergency-kill-switch")
 def emergency_kill_switch(
     payload: EmergencyKillSwitchPayload,
+    current_admin: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     """
     Emergency kill switch for critical subsystems with mandatory reason log.
+    Requires Admin privileges.
     """
     target = payload.target.upper()
     flag_key_map = {
@@ -449,11 +470,11 @@ def emergency_kill_switch(
     flag = db.query(FeatureFlag).filter(FeatureFlag.key == flag_key).first()
     if flag:
         flag.enabled = False
-        flag.updated_by = payload.actor_email or "admin@movra.ai"
+        flag.updated_by = current_admin.email
 
     # Mandatory Reasoned Audit Entry
     audit = AuditLog(
-        actor_email=payload.actor_email or "admin@movra.ai",
+        actor_email=current_admin.email,
         action=f"EMERGENCY_KILL_SWITCH_{target}",
         target_type="SystemKillSwitch",
         target_id=target,
@@ -477,10 +498,12 @@ def emergency_kill_switch(
 @router.get("/audit-logs")
 def get_audit_logs(
     limit: int = 50,
+    current_admin: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     """
     Returns read-only operational audit trail of all sensitive admin operations.
+    Requires Admin privileges.
     """
     logs = db.query(AuditLog).order_by(desc(AuditLog.timestamp)).limit(limit).all()
     if not logs:
@@ -523,7 +546,11 @@ def get_services(db: Session = Depends(get_db)):
 
 
 @router.post("/services")
-def create_service(payload: ServiceItemPayload, db: Session = Depends(get_db)):
+def create_service(
+    payload: ServiceItemPayload,
+    current_admin: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
     srv = PlatformService(
         name=payload.name,
         description=payload.description,
@@ -543,6 +570,7 @@ def create_service(payload: ServiceItemPayload, db: Session = Depends(get_db)):
 def update_service(
     service_id: int,
     payload: Dict[str, Any],
+    current_admin: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     srv = db.query(PlatformService).filter(PlatformService.id == service_id).first()
@@ -580,7 +608,11 @@ def get_service_areas(db: Session = Depends(get_db)):
 
 
 @router.post("/service-areas")
-def add_service_area(payload: ServiceAreaPayload, db: Session = Depends(get_db)):
+def add_service_area(
+    payload: ServiceAreaPayload,
+    current_admin: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
     area = PlatformServiceArea(
         name=payload.name,
         is_active=payload.is_active,
@@ -596,6 +628,7 @@ def add_service_area(payload: ServiceAreaPayload, db: Session = Depends(get_db))
 def toggle_service_area(
     area_id: int,
     is_active: bool = Query(...),
+    current_admin: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     area = db.query(PlatformServiceArea).filter(PlatformServiceArea.id == area_id).first()
@@ -613,6 +646,7 @@ def toggle_service_area(
 def assign_physiotherapist_to_booking(
     booking_id: int,
     payload: AssignPhysioPayload,
+    current_admin: User = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     booking = db.query(Booking).filter(Booking.id == booking_id).first()
@@ -624,7 +658,7 @@ def assign_physiotherapist_to_booking(
 
     # Audit Log
     audit = AuditLog(
-        actor_email="admin@movra.ai",
+        actor_email=current_admin.email,
         action="BOOKING_ASSIGNED",
         target_type="Booking",
         target_id=str(booking_id),
@@ -644,12 +678,17 @@ def assign_physiotherapist_to_booking(
 # SYSTEM HEALTH DIAGNOSTICS
 # ========================================================
 @router.get("/system-health")
-def get_system_health(db: Session = Depends(get_db)):
+def get_system_health(
+    current_admin: User = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
     """
     Returns live connectivity diagnostics across FastAPI, SQLite DB, AI Agents, and Auth.
+    Requires Admin privileges.
     """
     db_connected = True
     try:
+        from sqlalchemy import text
         db.execute(text("SELECT 1"))
     except Exception:
         db_connected = False
@@ -677,7 +716,10 @@ def get_homepage_content():
 
 
 @router.post("/content")
-def update_homepage_content(payload: ContentUpdatePayload):
+def update_homepage_content(
+    payload: ContentUpdatePayload,
+    current_admin: User = Depends(require_admin)
+):
     if payload.hero_headline is not None:
         HOMEPAGE_CONTENT["hero_headline"] = payload.hero_headline
     if payload.hero_subheadline is not None:

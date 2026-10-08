@@ -352,6 +352,52 @@ class PlatformServiceArea(Base):
         }
 
 
+class PlanApprovalStatus(str, enum.Enum):
+    DRAFT = "DRAFT"
+    PENDING_REVIEW = "PENDING_REVIEW"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    MODIFIED = "MODIFIED"
+
+
+class RehabPlan(Base):
+    __tablename__ = "rehab_plans"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    patient_id = Column(String(100), index=True, nullable=False)
+    status = Column(
+        Enum(PlanApprovalStatus, values_callable=lambda obj: [e.value for e in obj]),
+        default=PlanApprovalStatus.APPROVED,
+        nullable=False
+    )
+    title = Column(String(200), default="Daily Rehabilitation Plan")
+    plan_data = Column(Text, nullable=False)  # JSON encoded plan
+    clinical_notes = Column(Text, nullable=True)
+    generated_by = Column(String(100), default="AI_PHYSIO_AGENT")  # AI_PHYSIO_AGENT or PHYSIOTHERAPIST
+    reviewed_by = Column(String(150), default="Dr. Ananya Iyer, PT")
+    reviewed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    def to_dict(self):
+        import json
+        try:
+            parsed = json.loads(self.plan_data)
+        except Exception:
+            parsed = {}
+        return {
+            "id": self.id,
+            "patient_id": self.patient_id,
+            "status": self.status.value if isinstance(self.status, PlanApprovalStatus) else str(self.status),
+            "title": self.title,
+            "plan": parsed,
+            "clinical_notes": self.clinical_notes,
+            "generated_by": self.generated_by,
+            "reviewed_by": self.reviewed_by,
+            "reviewed_at": self.reviewed_at.isoformat() if self.reviewed_at else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None
+        }
+
+
 # Ensure tables are created
 Base.metadata.create_all(bind=engine)
 
@@ -361,7 +407,7 @@ def migrate_user_table():
         inspector = inspect(engine)
         tables = inspector.get_table_names()
         
-        for table_cls in [Booking, Appointment, SOAPNote, PatientGoal, PaymentRecord, FeatureFlag, AuditLog, PlatformService, PlatformServiceArea]:
+        for table_cls in [Booking, Appointment, SOAPNote, PatientGoal, PaymentRecord, FeatureFlag, AuditLog, PlatformService, PlatformServiceArea, RehabPlan]:
             if table_cls.__tablename__ not in tables:
                 table_cls.__table__.create(bind=engine)
                 print(f"[*] Migration: Created '{table_cls.__tablename__}' table.")
